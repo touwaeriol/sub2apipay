@@ -1,7 +1,7 @@
 export interface UserInfo {
   id?: number;
   username: string;
-  balance: number;
+  balance?: number;
 }
 
 export interface MyOrder {

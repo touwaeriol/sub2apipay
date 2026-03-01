@@ -111,7 +111,7 @@ function PayContent() {
               (typeof meUser.displayName === 'string' && meUser.displayName.trim()) ||
               (typeof meUser.username === 'string' && meUser.username.trim()) ||
               `用户 #${userId}`,
-            balance: typeof meUser.balance === 'number' ? meUser.balance : 0,
+            balance: typeof meUser.balance === 'number' ? meUser.balance : undefined,
           });
 
           if (Array.isArray(meData.orders)) {
@@ -127,8 +127,8 @@ function PayContent() {
         }
       }
 
-      // 无 token 或 token 失效：只显示用户 ID，不展示隐私信息
-      setUserInfo({ id: userId, username: `用户 #${userId}`, balance: 0 });
+      // 无 token 或 token 失效：只显示用户 ID，不展示隐私信息（不显示余额）
+      setUserInfo({ id: userId, username: `用户 #${userId}` });
       setMyOrders([]);
       setOrdersPage(1);
       setOrdersHasMore(false);
@@ -254,12 +254,13 @@ function PayContent() {
 
   useEffect(() => {
     if (step !== 'result' || finalStatus !== 'COMPLETED') return;
+    // 立即在后台刷新余额，2.2s 显示结果页后再切回表单（届时余额已更新）
+    loadUserAndOrders();
     const timer = setTimeout(() => {
       setStep('form');
       setOrderResult(null);
       setFinalStatus('');
       setError('');
-      loadUserAndOrders();
     }, 2200);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -72,7 +72,7 @@ function OrdersContent() {
         return;
       }
       if (!hasToken) {
-        setUserInfo({ id: userId, username: `用户 #${userId}`, balance: 0 });
+        setUserInfo({ id: userId, username: `用户 #${userId}` });
         setOrders([]);
         setError('当前链接未携带登录 token，无法查询"我的订单"。');
         return;
