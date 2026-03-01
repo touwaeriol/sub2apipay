@@ -60,22 +60,15 @@ export default function PayPageLayout({
               Sub2API Secure Pay
             </div>
             <h1
-              className={[
-                'text-2xl font-semibold tracking-tight',
-                isDark ? 'text-slate-100' : 'text-slate-900',
-              ].join(' ')}
+              className={['text-2xl font-semibold tracking-tight', isDark ? 'text-slate-100' : 'text-slate-900'].join(
+                ' ',
+              )}
             >
               {title}
             </h1>
-            <p className={['mt-1 text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-              {subtitle}
-            </p>
+            <p className={['mt-1 text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>{subtitle}</p>
           </div>
-          {actions && (
-            <div className="flex items-center gap-2">
-              {actions}
-            </div>
-          )}
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
 
         {children}

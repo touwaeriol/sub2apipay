@@ -28,8 +28,29 @@ function resolveCid(paymentType: 'alipay' | 'wxpay'): string | undefined {
   return normalizeCidList(env.EASY_PAY_CID_WXPAY) || normalizeCidList(env.EASY_PAY_CID);
 }
 
+function assertEasyPayEnv(env: ReturnType<typeof getEnv>) {
+  if (
+    !env.EASY_PAY_PID ||
+    !env.EASY_PAY_PKEY ||
+    !env.EASY_PAY_API_BASE ||
+    !env.EASY_PAY_NOTIFY_URL ||
+    !env.EASY_PAY_RETURN_URL
+  ) {
+    throw new Error(
+      'EasyPay environment variables (EASY_PAY_PID, EASY_PAY_PKEY, EASY_PAY_API_BASE, EASY_PAY_NOTIFY_URL, EASY_PAY_RETURN_URL) are required',
+    );
+  }
+  return env as typeof env & {
+    EASY_PAY_PID: string;
+    EASY_PAY_PKEY: string;
+    EASY_PAY_API_BASE: string;
+    EASY_PAY_NOTIFY_URL: string;
+    EASY_PAY_RETURN_URL: string;
+  };
+}
+
 export async function createPayment(opts: CreatePaymentOptions): Promise<EasyPayCreateResponse> {
-  const env = getEnv();
+  const env = assertEasyPayEnv(getEnv());
   const params: Record<string, string> = {
     pid: env.EASY_PAY_PID,
     type: opts.paymentType,
@@ -57,7 +78,7 @@ export async function createPayment(opts: CreatePaymentOptions): Promise<EasyPay
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
 
-  const data = await response.json() as EasyPayCreateResponse;
+  const data = (await response.json()) as EasyPayCreateResponse;
   if (data.code !== 1) {
     throw new Error(`EasyPay create payment failed: ${data.msg || 'unknown error'}`);
   }
@@ -65,10 +86,10 @@ export async function createPayment(opts: CreatePaymentOptions): Promise<EasyPay
 }
 
 export async function queryOrder(outTradeNo: string): Promise<EasyPayQueryResponse> {
-  const env = getEnv();
+  const env = assertEasyPayEnv(getEnv());
   const url = `${env.EASY_PAY_API_BASE}/api.php?act=order&pid=${env.EASY_PAY_PID}&key=${env.EASY_PAY_PKEY}&out_trade_no=${outTradeNo}`;
   const response = await fetch(url);
-  const data = await response.json() as EasyPayQueryResponse;
+  const data = (await response.json()) as EasyPayQueryResponse;
   if (data.code !== 1) {
     throw new Error(`EasyPay query order failed: ${data.msg || 'unknown error'}`);
   }
@@ -76,7 +97,7 @@ export async function queryOrder(outTradeNo: string): Promise<EasyPayQueryRespon
 }
 
 export async function refund(tradeNo: string, outTradeNo: string, money: string): Promise<EasyPayRefundResponse> {
-  const env = getEnv();
+  const env = assertEasyPayEnv(getEnv());
   const params = new URLSearchParams({
     pid: env.EASY_PAY_PID,
     key: env.EASY_PAY_PKEY,
@@ -89,7 +110,7 @@ export async function refund(tradeNo: string, outTradeNo: string, money: string)
     body: params,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-  const data = await response.json() as EasyPayRefundResponse;
+  const data = (await response.json()) as EasyPayRefundResponse;
   if (data.code !== 1) {
     throw new Error(`EasyPay refund failed: ${data.msg || 'unknown error'}`);
   }

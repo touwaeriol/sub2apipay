@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import PaymentForm from '@/components/PaymentForm';
 import PaymentQRCode from '@/components/PaymentQRCode';
 import OrderStatus from '@/components/OrderStatus';
@@ -13,9 +13,10 @@ interface OrderResult {
   orderId: string;
   amount: number;
   status: string;
-  paymentType: 'alipay' | 'wxpay';
+  paymentType: 'alipay' | 'wxpay' | 'stripe';
   payUrl?: string | null;
   qrCode?: string | null;
+  checkoutUrl?: string | null;
   expiresAt: string;
 }
 
@@ -47,7 +48,7 @@ function PayContent() {
   const [activeMobileTab, setActiveMobileTab] = useState<'pay' | 'orders'>('pay');
 
   const [config] = useState<AppConfig>({
-    enabledPaymentTypes: ['alipay', 'wxpay'],
+    enabledPaymentTypes: ['alipay', 'wxpay', 'stripe'],
     minAmount: 1,
     maxAmount: 10000,
   });
@@ -185,6 +186,7 @@ function PayContent() {
         paymentType: data.paymentType || paymentType,
         payUrl: data.payUrl,
         qrCode: data.qrCode,
+        checkoutUrl: data.checkoutUrl,
         expiresAt: data.expiresAt,
       });
 
@@ -385,6 +387,7 @@ function PayContent() {
           orderId={orderResult.orderId}
           payUrl={orderResult.payUrl}
           qrCode={orderResult.qrCode}
+          checkoutUrl={orderResult.checkoutUrl}
           paymentType={orderResult.paymentType}
           amount={orderResult.amount}
           expiresAt={orderResult.expiresAt}

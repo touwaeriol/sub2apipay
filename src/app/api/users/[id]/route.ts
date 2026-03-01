@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/sub2api/client';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const userId = Number(id);
 

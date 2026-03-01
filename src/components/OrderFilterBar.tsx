@@ -17,8 +17,12 @@ export default function OrderFilterBar({ isDark, activeFilter, onChange }: Order
           className={[
             'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
             activeFilter === item.key
-              ? (isDark ? 'border-slate-500 bg-slate-700 text-slate-100' : 'border-slate-400 bg-slate-900 text-white')
-              : (isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-600 hover:bg-slate-100'),
+              ? isDark
+                ? 'border-slate-500 bg-slate-700 text-slate-100'
+                : 'border-slate-400 bg-slate-900 text-white'
+              : isDark
+                ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-100',
           ].join(' ')}
         >
           {item.label}

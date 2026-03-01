@@ -2,7 +2,9 @@ import crypto from 'crypto';
 
 export function generateSign(params: Record<string, string>, pkey: string): string {
   const filtered = Object.entries(params)
-    .filter(([key, value]) => key !== 'sign' && key !== 'sign_type' && value !== '' && value !== undefined && value !== null)
+    .filter(
+      ([key, value]) => key !== 'sign' && key !== 'sign_type' && value !== '' && value !== undefined && value !== null,
+    )
     .sort(([a], [b]) => a.localeCompare(b));
 
   const queryString = filtered.map(([key, value]) => `${key}=${value}`).join('&');

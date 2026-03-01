@@ -1,10 +1,4 @@
-export type RechargeStatus =
-  | 'not_paid'
-  | 'paid_pending'
-  | 'recharging'
-  | 'success'
-  | 'failed'
-  | 'closed';
+export type RechargeStatus = 'not_paid' | 'paid_pending' | 'recharging' | 'success' | 'failed' | 'closed';
 
 export interface OrderStatusLike {
   status: string;
@@ -12,13 +6,7 @@ export interface OrderStatusLike {
   completedAt?: Date | string | null;
 }
 
-const CLOSED_STATUSES = new Set([
-  'EXPIRED',
-  'CANCELLED',
-  'REFUNDING',
-  'REFUNDED',
-  'REFUND_FAILED',
-]);
+const CLOSED_STATUSES = new Set(['EXPIRED', 'CANCELLED', 'REFUNDING', 'REFUNDED', 'REFUND_FAILED']);
 
 const REFUND_STATUSES = new Set(['REFUNDING', 'REFUNDED', 'REFUND_FAILED']);
 

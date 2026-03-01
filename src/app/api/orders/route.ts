@@ -6,7 +6,7 @@ import { getEnv } from '@/lib/config';
 const createOrderSchema = z.object({
   user_id: z.number().int().positive(),
   amount: z.number().positive(),
-  payment_type: z.enum(['alipay', 'wxpay']),
+  payment_type: z.enum(['alipay', 'wxpay', 'stripe']),
 });
 
 export async function POST(request: NextRequest) {
@@ -16,10 +16,7 @@ export async function POST(request: NextRequest) {
     const parsed = createOrderSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: '参数错误', details: parsed.error.flatten().fieldErrors },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: '参数错误', details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
     const { user_id, amount, payment_type } = parsed.data;
@@ -34,15 +31,11 @@ export async function POST(request: NextRequest) {
 
     // Validate payment type is enabled
     if (!env.ENABLED_PAYMENT_TYPES.includes(payment_type)) {
-      return NextResponse.json(
-        { error: `不支持的支付方式: ${payment_type}` },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: `不支持的支付方式: ${payment_type}` }, { status: 400 });
     }
 
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || '127.0.0.1';
+    const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
 
     const result = await createOrder({
       userId: user_id,
@@ -54,15 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof OrderError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode },
-      );
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
     console.error('Create order error:', error);
-    return NextResponse.json(
-      { error: '创建订单失败，请稍后重试' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: '创建订单失败，请稍后重试' }, { status: 500 });
   }
 }

@@ -7,7 +7,10 @@ export function middleware(request: NextRequest) {
   // IFRAME_ALLOW_ORIGINS: 允许嵌入 iframe 的外部域名（逗号分隔）
   const allowOrigins = process.env.IFRAME_ALLOW_ORIGINS || '';
 
-  const origins = allowOrigins.split(',').map(s => s.trim()).filter(Boolean);
+  const origins = allowOrigins
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   if (origins.length > 0) {
     response.headers.set('Content-Security-Policy', `frame-ancestors 'self' ${origins.join(' ')}`);

@@ -12,16 +12,24 @@ const envSchema = z.object({
   SUB2API_BASE_URL: z.string().url(),
   SUB2API_ADMIN_API_KEY: z.string().min(1),
 
-  EASY_PAY_PID: z.string().min(1),
-  EASY_PAY_PKEY: z.string().min(1),
-  EASY_PAY_API_BASE: z.string().url(),
-  EASY_PAY_NOTIFY_URL: z.string().url(),
-  EASY_PAY_RETURN_URL: z.string().url(),
+  // ── Easy-Pay (optional when only using Stripe) ──
+  EASY_PAY_PID: optionalTrimmedString,
+  EASY_PAY_PKEY: optionalTrimmedString,
+  EASY_PAY_API_BASE: optionalTrimmedString,
+  EASY_PAY_NOTIFY_URL: optionalTrimmedString,
+  EASY_PAY_RETURN_URL: optionalTrimmedString,
   EASY_PAY_CID: optionalTrimmedString,
   EASY_PAY_CID_ALIPAY: optionalTrimmedString,
   EASY_PAY_CID_WXPAY: optionalTrimmedString,
 
-  ENABLED_PAYMENT_TYPES: z.string().default('alipay,wxpay').transform(v => v.split(',').map(s => s.trim())),
+  STRIPE_SECRET_KEY: optionalTrimmedString,
+  STRIPE_PUBLISHABLE_KEY: optionalTrimmedString,
+  STRIPE_WEBHOOK_SECRET: optionalTrimmedString,
+
+  ENABLED_PAYMENT_TYPES: z
+    .string()
+    .default('alipay,wxpay')
+    .transform((v) => v.split(',').map((s) => s.trim())),
 
   ORDER_TIMEOUT_MINUTES: z.string().default('5').transform(Number).pipe(z.number().int().positive()),
   MIN_RECHARGE_AMOUNT: z.string().default('1').transform(Number).pipe(z.number().positive()),

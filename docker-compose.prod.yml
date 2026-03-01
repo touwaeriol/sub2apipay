@@ -3,7 +3,7 @@ services:
     image: sub2apipay:latest
     container_name: sub2apipay
     ports:
-      - "8087:3000"
+      - '8087:3000'
     env_file: .env
     networks:
       - sub2api-network

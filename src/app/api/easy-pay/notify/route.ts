@@ -1,25 +1,19 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import type { EasyPayNotifyParams } from '@/lib/easy-pay/types';
+import { EasyPayProvider } from '@/lib/easy-pay/provider';
+
+const easyPayProvider = new EasyPayProvider();
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const rawBody = request.nextUrl.searchParams.toString();
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
 
-    const params: EasyPayNotifyParams = {
-      pid: searchParams.get('pid') || '',
-      name: searchParams.get('name') || '',
-      money: searchParams.get('money') || '',
-      out_trade_no: searchParams.get('out_trade_no') || '',
-      trade_no: searchParams.get('trade_no') || '',
-      param: searchParams.get('param') || '',
-      trade_status: searchParams.get('trade_status') || '',
-      type: searchParams.get('type') || '',
-      sign: searchParams.get('sign') || '',
-      sign_type: searchParams.get('sign_type') || '',
-    };
-
-    const success = await handlePaymentNotify(params);
+    const notification = await easyPayProvider.verifyNotification(rawBody, headers);
+    const success = await handlePaymentNotify(notification, easyPayProvider.name);
     return new Response(success ? 'success' : 'fail', {
       headers: { 'Content-Type': 'text/plain' },
     });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
-import { Prisma } from '@prisma/client';
+import { Prisma, OrderStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminToken(request)) return unauthorizedResponse();
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const dateTo = searchParams.get('date_to');
 
   const where: Prisma.OrderWhereInput = {};
-  if (status) where.status = status as any;
+  if (status && status in OrderStatus) where.status = status as OrderStatus;
   if (userId) where.userId = Number(userId);
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({
-    orders: orders.map(o => ({
+    orders: orders.map((o) => ({
       ...o,
       amount: Number(o.amount),
     })),

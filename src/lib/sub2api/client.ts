@@ -51,20 +51,17 @@ export async function createAndRedeem(
   notes: string,
 ): Promise<Sub2ApiRedeemCode> {
   const env = getEnv();
-  const response = await fetch(
-    `${env.SUB2API_BASE_URL}/api/v1/admin/redeem-codes/create-and-redeem`,
-    {
-      method: 'POST',
-      headers: getHeaders(`sub2apipay:recharge:${code}`),
-      body: JSON.stringify({
-        code,
-        type: 'balance',
-        value,
-        user_id: userId,
-        notes,
-      }),
-    },
-  );
+  const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/redeem-codes/create-and-redeem`, {
+    method: 'POST',
+    headers: getHeaders(`sub2apipay:recharge:${code}`),
+    body: JSON.stringify({
+      code,
+      type: 'balance',
+      value,
+      user_id: userId,
+      notes,
+    }),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -82,18 +79,15 @@ export async function subtractBalance(
   idempotencyKey: string,
 ): Promise<void> {
   const env = getEnv();
-  const response = await fetch(
-    `${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}/balance`,
-    {
-      method: 'POST',
-      headers: getHeaders(idempotencyKey),
-      body: JSON.stringify({
-        operation: 'subtract',
-        amount,
-        notes,
-      }),
-    },
-  );
+  const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}/balance`, {
+    method: 'POST',
+    headers: getHeaders(idempotencyKey),
+    body: JSON.stringify({
+      operation: 'subtract',
+      amount,
+      notes,
+    }),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

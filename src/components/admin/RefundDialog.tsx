@@ -34,7 +34,7 @@ export default function RefundDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onCancel}>
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900">确认退款</h3>
 
         <div className="mt-4 space-y-3">
@@ -48,11 +48,7 @@ export default function RefundDialog({
             <div className="text-lg font-bold text-red-600">¥{amount.toFixed(2)}</div>
           </div>
 
-          {warning && (
-            <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">
-              {warning}
-            </div>
-          )}
+          {warning && <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">{warning}</div>}
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">退款原因</label>

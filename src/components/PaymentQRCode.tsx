@@ -7,7 +7,8 @@ interface PaymentQRCodeProps {
   orderId: string;
   payUrl?: string | null;
   qrCode?: string | null;
-  paymentType?: 'alipay' | 'wxpay';
+  checkoutUrl?: string | null;
+  paymentType?: 'alipay' | 'wxpay' | 'stripe';
   amount: number;
   expiresAt: string;
   onStatusChange: (status: string) => void;
@@ -23,10 +24,20 @@ const TEXT_BACK = '\u8FD4\u56DE';
 const TEXT_CANCEL_ORDER = '\u53D6\u6D88\u8BA2\u5355';
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED', 'REFUND_FAILED']);
 
+function isSafeCheckoutUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname.endsWith('.stripe.com');
+  } catch {
+    return false;
+  }
+}
+
 export default function PaymentQRCode({
   orderId,
   payUrl,
   qrCode,
+  checkoutUrl,
   paymentType,
   amount,
   expiresAt,
@@ -38,6 +49,7 @@ export default function PaymentQRCode({
   const [expired, setExpired] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [imageLoading, setImageLoading] = useState(false);
+  const [stripeOpened, setStripeOpened] = useState(false);
 
   const qrPayload = useMemo(() => {
     const value = (qrCode || payUrl || '').trim();
@@ -124,13 +136,14 @@ export default function PaymentQRCode({
   const handleCancel = async () => {
     try {
       const res = await fetch(`/api/orders/${orderId}`);
-      if (res.ok) {
-        const data = await res.json();
-        await fetch(`/api/orders/${orderId}/cancel`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: data.user_id }),
-        });
+      if (!res.ok) return;
+      const data = await res.json();
+      const cancelRes = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: data.user_id }),
+      });
+      if (cancelRes.ok) {
         onStatusChange('CANCELLED');
       }
     } catch {
@@ -138,10 +151,11 @@ export default function PaymentQRCode({
     }
   };
 
+  const isStripe = paymentType === 'stripe';
   const isWx = paymentType === 'wxpay';
-  const iconSrc = isWx ? '/icons/wxpay.svg' : '/icons/alipay.svg';
-  const channelLabel = isWx ? '\u5FAE\u4FE1' : '\u652F\u4ED8\u5B9D';
-  const iconBgClass = isWx ? 'bg-[#07C160]' : 'bg-[#1677FF]';
+  const iconSrc = isStripe ? '' : isWx ? '/icons/wxpay.svg' : '/icons/alipay.svg';
+  const channelLabel = isStripe ? 'Stripe' : isWx ? '\u5FAE\u4FE1' : '\u652F\u4ED8\u5B9D';
+  const iconBgClass = isStripe ? 'bg-[#635bff]' : isWx ? 'bg-[#07C160]' : 'bg-[#1677FF]';
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -154,44 +168,91 @@ export default function PaymentQRCode({
 
       {!expired && (
         <>
-          {qrDataUrl && (
-            <div className={['relative rounded-lg border p-4', dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'].join(' ')}>
-              {imageLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/10">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          {isStripe ? (
+            <>
+              <button
+                type="button"
+                disabled={!checkoutUrl || !isSafeCheckoutUrl(checkoutUrl) || stripeOpened}
+                onClick={() => {
+                  if (checkoutUrl && isSafeCheckoutUrl(checkoutUrl)) {
+                    window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+                    setStripeOpened(true);
+                  }
+                }}
+                className={[
+                  'inline-flex items-center gap-2 rounded-lg px-8 py-3 font-medium text-white shadow-md transition-colors',
+                  !checkoutUrl || !isSafeCheckoutUrl(checkoutUrl) || stripeOpened
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-[#635bff] hover:bg-[#5249d9] active:bg-[#4840c4]',
+                ].join(' ')}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                  <line x1="1" y1="10" x2="23" y2="10" />
+                </svg>
+                {stripeOpened ? '\u5DF2\u6253\u5F00\u652F\u4ED8\u9875\u9762' : '\u524D\u5F80 Stripe \u652F\u4ED8'}
+              </button>
+              {stripeOpened && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (checkoutUrl && isSafeCheckoutUrl(checkoutUrl)) {
+                      window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className={['text-sm underline', dark ? 'text-slate-400 hover:text-slate-300' : 'text-gray-500 hover:text-gray-700'].join(' ')}
+                >
+                  {'\u91CD\u65B0\u6253\u5F00\u652F\u4ED8\u9875\u9762'}
+                </button>
+              )}
+              <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
+                {!checkoutUrl || !isSafeCheckoutUrl(checkoutUrl)
+                  ? '\u652F\u4ED8\u94FE\u63A5\u521B\u5EFA\u5931\u8D25\uFF0C\u8BF7\u8FD4\u56DE\u91CD\u8BD5'
+                  : '\u5728\u65B0\u7A97\u53E3\u5B8C\u6210\u652F\u4ED8\u540E\uFF0C\u6B64\u9875\u9762\u5C06\u81EA\u52A8\u66F4\u65B0'}
+              </p>
+            </>
+          ) : (
+            <>
+              {qrDataUrl && (
+                <div className={['relative rounded-lg border p-4', dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'].join(' ')}>
+                  {imageLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/10">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                    </div>
+                  )}
+                  <img src={qrDataUrl} alt="payment qrcode" className="h-56 w-56 rounded" />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span className={`rounded-full p-2 shadow ring-2 ring-white ${iconBgClass}`}>
+                      <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />
+                    </span>
+                  </div>
                 </div>
               )}
-              <img src={qrDataUrl} alt="payment qrcode" className="h-56 w-56 rounded" />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className={`rounded-full p-2 shadow ring-2 ring-white ${iconBgClass}`}>
-                  <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />
-                </span>
-              </div>
-            </div>
-          )}
 
-          {!qrDataUrl && payUrl && (
-            <a
-              href={payUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg bg-blue-600 px-8 py-3 font-medium text-white hover:bg-blue-700"
-            >
-              {TEXT_GO_PAY}
-            </a>
-          )}
+              {!qrDataUrl && payUrl && (
+                <a
+                  href={payUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg bg-blue-600 px-8 py-3 font-medium text-white hover:bg-blue-700"
+                >
+                  {TEXT_GO_PAY}
+                </a>
+              )}
 
-          {!qrDataUrl && !payUrl && (
-            <div className="text-center">
-              <div className={['rounded-lg border-2 border-dashed p-8', dark ? 'border-slate-700' : 'border-gray-300'].join(' ')}>
-                <p className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>{TEXT_SCAN_PAY}</p>
-              </div>
-            </div>
-          )}
+              {!qrDataUrl && !payUrl && (
+                <div className="text-center">
+                  <div className={['rounded-lg border-2 border-dashed p-8', dark ? 'border-slate-700' : 'border-gray-300'].join(' ')}>
+                    <p className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>{TEXT_SCAN_PAY}</p>
+                  </div>
+                </div>
+              )}
 
-          <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
-            {`\u8BF7\u6253\u5F00${channelLabel}\u626B\u4E00\u626B\u5B8C\u6210\u652F\u4ED8`}
-          </p>
+              <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
+                {`\u8BF7\u6253\u5F00${channelLabel}\u626B\u4E00\u626B\u5B8C\u6210\u652F\u4ED8`}
+              </p>
+            </>
+          )}
         </>
       )}
 

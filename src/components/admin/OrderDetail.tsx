@@ -75,11 +75,13 @@ export default function OrderDetail({ order, onClose }: OrderDetailProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
         className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold">订单详情</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            ✕
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -99,21 +101,13 @@ export default function OrderDetail({ order, onClose }: OrderDetailProps) {
               <div key={log.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{log.action}</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(log.createdAt).toLocaleString('zh-CN')}
-                  </span>
+                  <span className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleString('zh-CN')}</span>
                 </div>
-                {log.detail && (
-                  <div className="mt-1 break-all text-xs text-gray-500">{log.detail}</div>
-                )}
-                {log.operator && (
-                  <div className="mt-1 text-xs text-gray-400">操作者: {log.operator}</div>
-                )}
+                {log.detail && <div className="mt-1 break-all text-xs text-gray-500">{log.detail}</div>}
+                {log.operator && <div className="mt-1 text-xs text-gray-400">操作者: {log.operator}</div>}
               </div>
             ))}
-            {order.auditLogs.length === 0 && (
-              <div className="text-center text-sm text-gray-400">暂无日志</div>
-            )}
+            {order.auditLogs.length === 0 && <div className="text-center text-sm text-gray-400">暂无日志</div>}
           </div>
         </div>
 

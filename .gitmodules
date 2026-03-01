@@ -1,0 +1,3 @@
+[submodule "vendor/stripe-node"]
+	path = vendor/stripe-node
+	url = https://github.com/stripe/stripe-node

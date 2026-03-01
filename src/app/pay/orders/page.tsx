@@ -154,7 +154,9 @@ function OrdersContent() {
 
   if (isMobile) {
     return (
-      <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <div
+        className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+      >
         正在切换到移动端订单 Tab...
       </div>
     );
@@ -184,7 +186,9 @@ function OrdersContent() {
             onClick={loadOrders}
             className={[
               'rounded-lg border px-3 py-2 text-xs font-medium',
-              isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+              isDark
+                ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+                : 'border-slate-300 text-slate-700 hover:bg-slate-100',
             ].join(' ')}
           >
             刷新
@@ -193,7 +197,9 @@ function OrdersContent() {
             href={payUrl}
             className={[
               'rounded-lg border px-3 py-2 text-xs font-medium',
-              isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+              isDark
+                ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+                : 'border-slate-300 text-slate-700 hover:bg-slate-100',
             ].join(' ')}
           >
             返回充值

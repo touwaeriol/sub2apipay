@@ -5,11 +5,42 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import OrderTable from '@/components/admin/OrderTable';
 import OrderDetail from '@/components/admin/OrderDetail';
 
+interface AdminOrder {
+  id: string;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  amount: number;
+  status: string;
+  paymentType: string;
+  createdAt: string;
+  paidAt: string | null;
+  completedAt: string | null;
+  failedReason: string | null;
+  expiresAt: string;
+}
+
+interface AdminOrderDetail extends AdminOrder {
+  rechargeCode: string;
+  paymentTradeNo: string | null;
+  refundAmount: number | null;
+  refundReason: string | null;
+  refundAt: string | null;
+  forceRefund: boolean;
+  failedAt: string | null;
+  updatedAt: string;
+  clientIp: string | null;
+  paymentSuccess?: boolean;
+  rechargeSuccess?: boolean;
+  rechargeStatus?: string;
+  auditLogs: { id: string; action: string; detail: string | null; operator: string | null; createdAt: string }[];
+}
+
 function AdminContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -17,8 +48,7 @@ function AdminContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Dialogs
-  const [detailOrder, setDetailOrder] = useState<any>(null);
+  const [detailOrder, setDetailOrder] = useState<AdminOrderDetail | null>(null);
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -134,7 +164,9 @@ function AdminContent() {
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
-          <button onClick={() => setError('')} className="ml-2 text-red-400 hover:text-red-600">✕</button>
+          <button onClick={() => setError('')} className="ml-2 text-red-400 hover:text-red-600">
+            ✕
+          </button>
         </div>
       )}
 
@@ -143,11 +175,12 @@ function AdminContent() {
         {statuses.map((s) => (
           <button
             key={s}
-            onClick={() => { setStatusFilter(s); setPage(1); }}
+            onClick={() => {
+              setStatusFilter(s);
+              setPage(1);
+            }}
             className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              statusFilter === s
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              statusFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {statusLabels[s]}
@@ -160,12 +193,7 @@ function AdminContent() {
         {loading ? (
           <div className="py-12 text-center text-gray-500">加载中...</div>
         ) : (
-          <OrderTable
-            orders={orders}
-            onRetry={handleRetry}
-            onCancel={handleCancel}
-            onViewDetail={handleViewDetail}
-          />
+          <OrderTable orders={orders} onRetry={handleRetry} onCancel={handleCancel} onViewDetail={handleViewDetail} />
         )}
       </div>
 
@@ -175,15 +203,17 @@ function AdminContent() {
           <span>共 {total} 条记录</span>
           <div className="flex gap-2">
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
               上一页
             </button>
-            <span className="px-3 py-1">{page} / {totalPages}</span>
+            <span className="px-3 py-1">
+              {page} / {totalPages}
+            </span>
             <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
@@ -194,23 +224,20 @@ function AdminContent() {
       )}
 
       {/* Order Detail */}
-      {detailOrder && (
-        <OrderDetail
-          order={detailOrder}
-          onClose={() => setDetailOrder(null)}
-        />
-      )}
+      {detailOrder && <OrderDetail order={detailOrder} onClose={() => setDetailOrder(null)} />}
     </div>
   );
 }
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">加载中...</div>
+        </div>
+      }
+    >
       <AdminContent />
     </Suspense>
   );

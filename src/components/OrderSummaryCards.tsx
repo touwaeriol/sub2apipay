@@ -11,7 +11,10 @@ interface OrderSummaryCardsProps {
 }
 
 export default function OrderSummaryCards({ isDark, summary }: OrderSummaryCardsProps) {
-  const cardClass = ['rounded-xl border p-3', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50'].join(' ');
+  const cardClass = [
+    'rounded-xl border p-3',
+    isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50',
+  ].join(' ');
   const labelClass = ['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ');
 
   return (

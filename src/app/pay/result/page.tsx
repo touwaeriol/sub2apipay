@@ -5,8 +5,9 @@ import { useEffect, useState, Suspense } from 'react';
 
 function ResultContent() {
   const searchParams = useSearchParams();
-  const outTradeNo = searchParams.get('out_trade_no');
-  const tradeStatus = searchParams.get('trade_status');
+  // Support both ZPAY (out_trade_no) and Stripe (order_id) callback params
+  const outTradeNo = searchParams.get('out_trade_no') || searchParams.get('order_id');
+  const tradeStatus = searchParams.get('trade_status') || searchParams.get('status');
 
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,9 +63,7 @@ function ResultContent() {
               {status === 'COMPLETED' ? '充值成功' : '充值处理中'}
             </h1>
             <p className="mt-2 text-gray-500">
-              {status === 'COMPLETED'
-                ? '余额已成功到账！'
-                : '支付成功，余额正在充值中...'}
+              {status === 'COMPLETED' ? '余额已成功到账！' : '支付成功，余额正在充值中...'}
             </p>
           </>
         ) : isPending ? (
@@ -89,9 +88,7 @@ function ResultContent() {
           </>
         )}
 
-        <p className="mt-4 text-xs text-gray-400">
-          订单号: {outTradeNo || '未知'}
-        </p>
+        <p className="mt-4 text-xs text-gray-400">订单号: {outTradeNo || '未知'}</p>
       </div>
     </div>
   );
@@ -99,11 +96,13 @@ function ResultContent() {
 
 export default function PayResultPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">加载中...</div>
+        </div>
+      }
+    >
       <ResultContent />
     </Suspense>
   );

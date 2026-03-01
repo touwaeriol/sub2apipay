@@ -56,6 +56,41 @@ export function formatCreatedAt(value: string): string {
   return date.toLocaleString();
 }
 
+export interface PaymentTypeMeta {
+  label: string;
+  sublabel?: string;
+  color: string;
+  selectedBorder: string;
+  selectedBg: string;
+  iconBg: string;
+}
+
+export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
+  alipay: {
+    label: '支付宝',
+    sublabel: 'ALIPAY',
+    color: '#00AEEF',
+    selectedBorder: 'border-cyan-400',
+    selectedBg: 'bg-cyan-50',
+    iconBg: 'bg-[#00AEEF]',
+  },
+  wxpay: {
+    label: '微信支付',
+    color: '#2BB741',
+    selectedBorder: 'border-green-500',
+    selectedBg: 'bg-green-50',
+    iconBg: 'bg-[#2BB741]',
+  },
+  stripe: {
+    label: 'Stripe',
+    sublabel: '信用卡 / 借记卡',
+    color: '#635bff',
+    selectedBorder: 'border-[#635bff]',
+    selectedBg: 'bg-[#635bff]/10',
+    iconBg: 'bg-[#635bff]',
+  },
+};
+
 export function getStatusBadgeClass(status: string, isDark: boolean): string {
   if (['COMPLETED', 'PAID'].includes(status)) {
     return isDark ? 'bg-emerald-500/20 text-emerald-200' : 'bg-emerald-100 text-emerald-700';

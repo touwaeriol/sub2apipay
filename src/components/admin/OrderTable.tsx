@@ -55,14 +55,14 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail }: 
         </thead>
         <tbody className="divide-y divide-gray-200 bg-white">
           {orders.map((order) => {
-            const statusInfo = STATUS_LABELS[order.status] || { label: order.status, className: 'bg-gray-100 text-gray-800' };
+            const statusInfo = STATUS_LABELS[order.status] || {
+              label: order.status,
+              className: 'bg-gray-100 text-gray-800',
+            };
             return (
               <tr key={order.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  <button
-                    onClick={() => onViewDetail(order.id)}
-                    className="text-blue-600 hover:underline"
-                  >
+                  <button onClick={() => onViewDetail(order.id)} className="text-blue-600 hover:underline">
                     {order.id.slice(0, 12)}...
                   </button>
                 </td>
@@ -70,9 +70,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail }: 
                   <div>{order.userName || '-'}</div>
                   <div className="text-xs text-gray-400">{order.userEmail || `ID: ${order.userId}`}</div>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
-                  ¥{order.amount.toFixed(2)}
-                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">¥{order.amount.toFixed(2)}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                   <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}>
                     {statusInfo.label}
@@ -109,9 +107,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail }: 
           })}
         </tbody>
       </table>
-      {orders.length === 0 && (
-        <div className="py-12 text-center text-gray-500">暂无订单</div>
-      )}
+      {orders.length === 0 && <div className="py-12 text-center text-gray-500">暂无订单</div>}
     </div>
   );
 }

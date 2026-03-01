@@ -1,12 +1,10 @@
 import { prisma } from '@/lib/db';
 import { getEnv } from '@/lib/config';
 import { generateRechargeCode } from './code-gen';
-import { createPayment } from '@/lib/easy-pay/client';
-import { verifySign } from '@/lib/easy-pay/sign';
-import { refund as easyPayRefund } from '@/lib/easy-pay/client';
+import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import type { PaymentType, PaymentNotification } from '@/lib/payment';
 import { getUser, createAndRedeem, subtractBalance } from '@/lib/sub2api/client';
 import { Prisma } from '@prisma/client';
-import type { EasyPayNotifyParams } from '@/lib/easy-pay/types';
 import { deriveOrderState, isRefundStatus } from './status';
 
 const MAX_PENDING_ORDERS = 3;
@@ -14,7 +12,7 @@ const MAX_PENDING_ORDERS = 3;
 export interface CreateOrderInput {
   userId: number;
   amount: number;
-  paymentType: 'alipay' | 'wxpay';
+  paymentType: PaymentType;
   clientIp: string;
 }
 
@@ -22,11 +20,12 @@ export interface CreateOrderResult {
   orderId: string;
   amount: number;
   status: string;
-  paymentType: 'alipay' | 'wxpay';
+  paymentType: PaymentType;
   userName: string;
   userBalance: number;
   payUrl?: string | null;
   qrCode?: string | null;
+  checkoutUrl?: string | null;
   expiresAt: Date;
 }
 
@@ -67,20 +66,24 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   });
 
   try {
-    const easyPayResult = await createPayment({
-      outTradeNo: order.id,
-      amount: input.amount.toFixed(2),
+    initPaymentProviders();
+    const provider = paymentRegistry.getProvider(input.paymentType);
+    const paymentResult = await provider.createPayment({
+      orderId: order.id,
+      amount: input.amount,
       paymentType: input.paymentType,
+      subject: `${env.PRODUCT_NAME} ${input.amount.toFixed(2)} CNY`,
+      notifyUrl: env.EASY_PAY_NOTIFY_URL || '',
+      returnUrl: env.EASY_PAY_RETURN_URL || '',
       clientIp: input.clientIp,
-      productName: `${env.PRODUCT_NAME} ${input.amount.toFixed(2)} CNY`,
     });
 
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        paymentTradeNo: easyPayResult.trade_no,
-        payUrl: easyPayResult.payurl || null,
-        qrCode: easyPayResult.qrcode || null,
+        paymentTradeNo: paymentResult.tradeNo,
+        payUrl: paymentResult.payUrl || null,
+        qrCode: paymentResult.qrCode || null,
       },
     });
 
@@ -100,8 +103,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       paymentType: input.paymentType,
       userName: user.username,
       userBalance: user.balance,
-      payUrl: easyPayResult.payurl,
-      qrCode: easyPayResult.qrcode,
+      payUrl: paymentResult.payUrl,
+      qrCode: paymentResult.qrCode,
+      checkoutUrl: paymentResult.checkoutUrl,
       expiresAt,
     };
   } catch (error) {
@@ -155,46 +159,41 @@ export async function adminCancelOrder(orderId: string): Promise<void> {
   });
 }
 
-export async function handlePaymentNotify(params: EasyPayNotifyParams): Promise<boolean> {
-  const env = getEnv();
-
-  const { sign, ...rest } = params;
-  const paramsForSign: Record<string, string> = {};
-  for (const [key, value] of Object.entries(rest)) {
-    if (value !== undefined && value !== null) {
-      paramsForSign[key] = String(value);
-    }
-  }
-  if (!verifySign(paramsForSign, env.EASY_PAY_PKEY, sign)) {
-    console.error('EasyPay notify: invalid signature');
-    return false;
-  }
-
-  if (params.trade_status !== 'TRADE_SUCCESS') {
-    return true;
-  }
-
+/**
+ * Provider-agnostic: confirm a payment and trigger recharge.
+ * Called by any provider's webhook/notify handler after verification.
+ */
+export async function confirmPayment(input: {
+  orderId: string;
+  tradeNo: string;
+  paidAmount: number;
+  providerName: string;
+}): Promise<boolean> {
   const order = await prisma.order.findUnique({
-    where: { id: params.out_trade_no },
+    where: { id: input.orderId },
   });
   if (!order) {
-    console.error('EasyPay notify: order not found:', params.out_trade_no);
+    console.error(`${input.providerName} notify: order not found:`, input.orderId);
     return false;
   }
 
   let paidAmount: Prisma.Decimal;
   try {
-    paidAmount = new Prisma.Decimal(params.money);
+    paidAmount = new Prisma.Decimal(input.paidAmount.toFixed(2));
   } catch {
-    console.error('EasyPay notify: invalid money format:', params.money);
+    console.error(`${input.providerName} notify: invalid amount:`, input.paidAmount);
     return false;
   }
   if (paidAmount.lte(0)) {
-    console.error('EasyPay notify: non-positive money:', params.money);
+    console.error(`${input.providerName} notify: non-positive amount:`, input.paidAmount);
     return false;
   }
   if (!paidAmount.equals(order.amount)) {
-    console.warn('EasyPay notify: amount changed, use paid amount', order.amount.toString(), params.money);
+    console.warn(
+      `${input.providerName} notify: amount changed, use paid amount`,
+      order.amount.toString(),
+      paidAmount.toString(),
+    );
   }
 
   const result = await prisma.order.updateMany({
@@ -205,7 +204,7 @@ export async function handlePaymentNotify(params: EasyPayNotifyParams): Promise<
     data: {
       status: 'PAID',
       amount: paidAmount,
-      paymentTradeNo: params.trade_no,
+      paymentTradeNo: input.tradeNo,
       paidAt: new Date(),
       failedAt: null,
       failedReason: null,
@@ -222,23 +221,39 @@ export async function handlePaymentNotify(params: EasyPayNotifyParams): Promise<
       action: 'ORDER_PAID',
       detail: JSON.stringify({
         previous_status: order.status,
-        trade_no: params.trade_no,
+        trade_no: input.tradeNo,
         expected_amount: order.amount.toString(),
         paid_amount: paidAmount.toString(),
       }),
-      operator: 'easy-pay',
+      operator: input.providerName,
     },
   });
 
   try {
-    // Recharge inline to avoid "paid but still recharging" async gaps.
     await executeRecharge(order.id);
   } catch (err) {
-    // Payment has been confirmed, always ack notify to avoid endless retries from gateway.
     console.error('Recharge failed for order:', order.id, err);
   }
 
   return true;
+}
+
+/**
+ * Handle a verified payment notification from any provider.
+ * The caller (webhook route) is responsible for verifying the notification
+ * via provider.verifyNotification() before calling this function.
+ */
+export async function handlePaymentNotify(notification: PaymentNotification, providerName: string): Promise<boolean> {
+  if (notification.status !== 'success') {
+    return true;
+  }
+
+  return confirmPayment({
+    orderId: notification.orderId,
+    tradeNo: notification.tradeNo,
+    paidAmount: notification.amount,
+    providerName,
+  });
 }
 
 export async function executeRecharge(orderId: string): Promise<void> {
@@ -442,15 +457,17 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
 
   try {
     if (order.paymentTradeNo) {
-      await easyPayRefund(order.paymentTradeNo, order.id, amount.toFixed(2));
+      initPaymentProviders();
+      const provider = paymentRegistry.getProvider(order.paymentType as PaymentType);
+      await provider.refund({
+        tradeNo: order.paymentTradeNo,
+        orderId: order.id,
+        amount,
+        reason: input.reason,
+      });
     }
 
-    await subtractBalance(
-      order.userId,
-      amount,
-      `sub2apipay refund order:${order.id}`,
-      `sub2apipay:refund:${order.id}`,
-    );
+    await subtractBalance(order.userId, amount, `sub2apipay refund order:${order.id}`, `sub2apipay:refund:${order.id}`);
 
     await prisma.order.update({
       where: { id: input.orderId },

@@ -17,10 +17,7 @@ export async function POST(request: NextRequest) {
     const parsed = refundSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: '参数错误', details: parsed.error.flatten().fieldErrors },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: '参数错误', details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
     const result = await processRefund({
@@ -32,10 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof OrderError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.statusCode },
-      );
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
     console.error('Refund error:', error);
     return NextResponse.json({ error: '退款失败' }, { status: 500 });

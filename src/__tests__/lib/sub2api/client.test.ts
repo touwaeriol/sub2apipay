@@ -45,17 +45,18 @@ describe('Sub2API Client', () => {
   it('createAndRedeem should send correct request', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        code: 1,
-        redeem_code: {
-          id: 1,
-          code: 's2p_test123',
-          type: 'balance',
-          value: 100,
-          status: 'used',
-          used_by: 1,
-        },
-      }),
+      json: () =>
+        Promise.resolve({
+          code: 1,
+          redeem_code: {
+            id: 1,
+            code: 's2p_test123',
+            type: 'balance',
+            value: 100,
+            status: 'used',
+            used_by: 1,
+          },
+        }),
     });
 
     const result = await createAndRedeem('s2p_test123', 100, 1, 'test notes');
