@@ -18,7 +18,7 @@ interface OrderDetailProps {
     status: string;
     paymentType: string;
     rechargeCode: string;
-    zpayTradeNo: string | null;
+    paymentTradeNo: string | null;
     refundAmount: number | null;
     refundReason: string | null;
     refundAt: string | null;
@@ -52,7 +52,7 @@ export default function OrderDetail({ order, onClose }: OrderDetailProps) {
     { label: 'Recharge Status', value: order.rechargeStatus || '-' },
     { label: '支付方式', value: order.paymentType === 'alipay' ? '支付宝' : '微信支付' },
     { label: '充值码', value: order.rechargeCode },
-    { label: 'ZPAY订单号', value: order.zpayTradeNo || '-' },
+    { label: '支付单号', value: order.paymentTradeNo || '-' },
     { label: '客户端IP', value: order.clientIp || '-' },
     { label: '创建时间', value: new Date(order.createdAt).toLocaleString('zh-CN') },
     { label: '过期时间', value: new Date(order.expiresAt).toLocaleString('zh-CN') },

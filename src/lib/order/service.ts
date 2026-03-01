@@ -78,7 +78,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        zpayTradeNo: easyPayResult.trade_no,
+        paymentTradeNo: easyPayResult.trade_no,
         payUrl: easyPayResult.payurl || null,
         qrCode: easyPayResult.qrcode || null,
       },
@@ -205,7 +205,7 @@ export async function handlePaymentNotify(params: EasyPayNotifyParams): Promise<
     data: {
       status: 'PAID',
       amount: paidAmount,
-      zpayTradeNo: params.trade_no,
+      paymentTradeNo: params.trade_no,
       paidAt: new Date(),
       failedAt: null,
       failedReason: null,
@@ -441,8 +441,8 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
   }
 
   try {
-    if (order.zpayTradeNo) {
-      await easyPayRefund(order.zpayTradeNo, order.id, amount.toFixed(2));
+    if (order.paymentTradeNo) {
+      await easyPayRefund(order.paymentTradeNo, order.id, amount.toFixed(2));
     }
 
     await subtractBalance(

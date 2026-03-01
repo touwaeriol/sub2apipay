@@ -16,7 +16,7 @@ model Order {
   status        OrderStatus @default(PENDING)
   paymentType   String      @map("payment_type")
 
-  zpayTradeNo   String?     @map("zpay_trade_no")
+  paymentTradeNo String?    @map("payment_trade_no")
   payUrl        String?     @map("pay_url")
   qrCode        String?     @map("qr_code")
   qrCodeImg     String?     @map("qr_code_img")
