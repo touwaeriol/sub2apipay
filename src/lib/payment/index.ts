@@ -19,10 +19,21 @@ let initialized = false;
 
 export function initPaymentProviders(): void {
   if (initialized) return;
-  paymentRegistry.register(new EasyPayProvider());
 
   const env = getEnv();
-  if (env.STRIPE_SECRET_KEY) {
+  const providers = env.PAYMENT_PROVIDERS;
+
+  if (providers.includes('easypay')) {
+    if (!env.EASY_PAY_PID || !env.EASY_PAY_PKEY) {
+      throw new Error('PAYMENT_PROVIDERS 含 easypay，但缺少 EASY_PAY_PID 或 EASY_PAY_PKEY');
+    }
+    paymentRegistry.register(new EasyPayProvider());
+  }
+
+  if (providers.includes('stripe')) {
+    if (!env.STRIPE_SECRET_KEY) {
+      throw new Error('PAYMENT_PROVIDERS 含 stripe，但缺少 STRIPE_SECRET_KEY');
+    }
     paymentRegistry.register(new StripeProvider());
   }
 

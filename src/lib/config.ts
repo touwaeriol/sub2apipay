@@ -12,7 +12,13 @@ const envSchema = z.object({
   SUB2API_BASE_URL: z.string().url(),
   SUB2API_ADMIN_API_KEY: z.string().min(1),
 
-  // ── Easy-Pay (optional when only using Stripe) ──
+  // ── 支付服务商（显式声明启用哪些服务商，逗号分隔：easypay, stripe） ──
+  PAYMENT_PROVIDERS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)),
+
+  // ── Easy-Pay（PAYMENT_PROVIDERS 含 easypay 时必填） ──
   EASY_PAY_PID: optionalTrimmedString,
   EASY_PAY_PKEY: optionalTrimmedString,
   EASY_PAY_API_BASE: optionalTrimmedString,
@@ -22,10 +28,13 @@ const envSchema = z.object({
   EASY_PAY_CID_ALIPAY: optionalTrimmedString,
   EASY_PAY_CID_WXPAY: optionalTrimmedString,
 
+  // ── Stripe（PAYMENT_PROVIDERS 含 stripe 时必填） ──
   STRIPE_SECRET_KEY: optionalTrimmedString,
   STRIPE_PUBLISHABLE_KEY: optionalTrimmedString,
   STRIPE_WEBHOOK_SECRET: optionalTrimmedString,
 
+  // ── 启用的支付渠道（在已配置服务商支持的渠道中选择） ──
+  // 易支付支持: alipay, wxpay；Stripe 支持: stripe
   ENABLED_PAYMENT_TYPES: z
     .string()
     .default('alipay,wxpay')
