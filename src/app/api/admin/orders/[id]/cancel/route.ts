@@ -3,7 +3,7 @@ import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { adminCancelOrder, OrderError } from '@/lib/order/service';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!verifyAdminToken(request)) return unauthorizedResponse();
+  if (!await verifyAdminToken(request)) return unauthorizedResponse();
 
   try {
     const { id } = await params;

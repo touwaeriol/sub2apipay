@@ -10,7 +10,7 @@ const refundSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  if (!verifyAdminToken(request)) return unauthorizedResponse();
+  if (!await verifyAdminToken(request)) return unauthorizedResponse();
 
   try {
     const body = await request.json();
