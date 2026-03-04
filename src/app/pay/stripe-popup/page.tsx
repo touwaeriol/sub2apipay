@@ -3,22 +3,20 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 
-// Methods that can be confirmed directly without Payment Element
-const DIRECT_CONFIRM_METHODS: Record<string, string> = {
-  alipay: 'confirmAlipayPayment',
-};
-
 function StripePopupContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id') || '';
-  const clientSecret = searchParams.get('client_secret') || '';
-  const pk = searchParams.get('pk') || '';
   const amount = parseFloat(searchParams.get('amount') || '0') || 0;
   const theme = searchParams.get('theme') === 'dark' ? 'dark' : 'light';
   const method = searchParams.get('method') || '';
   const isDark = theme === 'dark';
-  const hasMissingParams = !orderId || !clientSecret || !pk;
+  const isAlipay = method === 'alipay';
 
+  // Sensitive data received via postMessage from parent, NOT from URL
+  const [credentials, setCredentials] = useState<{
+    clientSecret: string;
+    publishableKey: string;
+  } | null>(null);
   const [stripeLoaded, setStripeLoaded] = useState(false);
   const [stripeSubmitting, setStripeSubmitting] = useState(false);
   const [stripeError, setStripeError] = useState('');
@@ -27,8 +25,6 @@ function StripePopupContent() {
     stripe: import('@stripe/stripe-js').Stripe;
     elements: import('@stripe/stripe-js').StripeElements;
   } | null>(null);
-
-  const directConfirmMethod = DIRECT_CONFIRM_METHODS[method];
 
   const buildReturnUrl = useCallback(() => {
     const returnUrl = new URL(window.location.href);
@@ -40,12 +36,32 @@ function StripePopupContent() {
     return returnUrl.toString();
   }, [orderId]);
 
-  // Initialize Stripe and auto-confirm for direct methods (e.g. Alipay)
+  // Listen for credentials from parent window via postMessage
   useEffect(() => {
-    if (hasMissingParams) return;
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'STRIPE_POPUP_INIT') return;
+      const { clientSecret, publishableKey } = event.data;
+      if (clientSecret && publishableKey) {
+        setCredentials({ clientSecret, publishableKey });
+      }
+    };
+    window.addEventListener('message', handler);
+    // Signal parent that popup is ready to receive data
+    if (window.opener) {
+      window.opener.postMessage({ type: 'STRIPE_POPUP_READY' }, window.location.origin);
+    }
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Initialize Stripe once credentials are received
+  useEffect(() => {
+    if (!credentials) return;
     let cancelled = false;
+    const { clientSecret, publishableKey } = credentials;
+
     import('@stripe/stripe-js').then(({ loadStripe }) => {
-      loadStripe(pk).then((stripe) => {
+      loadStripe(publishableKey).then((stripe) => {
         if (cancelled || !stripe) {
           if (!cancelled) {
             setStripeError('支付组件加载失败，请关闭窗口重试');
@@ -54,21 +70,18 @@ function StripePopupContent() {
           return;
         }
 
-        if (directConfirmMethod) {
-          // Direct confirm (e.g. Alipay) — immediately redirect, no Payment Element needed
-          const confirmFn = (stripe as unknown as Record<string, Function>)[directConfirmMethod];
-          if (typeof confirmFn === 'function') {
-            confirmFn.call(stripe, clientSecret, {
-              return_url: buildReturnUrl(),
-            }).then((result: { error?: { message?: string } }) => {
-              if (cancelled) return;
-              if (result.error) {
-                setStripeError(result.error.message || '支付失败，请重试');
-                setStripeLoaded(true);
-              }
-              // If no error, the page has already been redirected
-            });
-          }
+        if (isAlipay) {
+          // Alipay: confirm directly and redirect, no Payment Element needed
+          stripe.confirmAlipayPayment(clientSecret, {
+            return_url: buildReturnUrl(),
+          }).then((result) => {
+            if (cancelled) return;
+            if (result.error) {
+              setStripeError(result.error.message || '支付失败，请重试');
+              setStripeLoaded(true);
+            }
+            // If no error, the page has already been redirected
+          });
           return;
         }
 
@@ -85,9 +98,9 @@ function StripePopupContent() {
       });
     });
     return () => { cancelled = true; };
-  }, [pk, clientSecret, isDark, directConfirmMethod, hasMissingParams, buildReturnUrl]);
+  }, [credentials, isDark, isAlipay, buildReturnUrl]);
 
-  // Mount Payment Element (only for non-direct methods)
+  // Mount Payment Element (only for non-alipay methods)
   const stripeContainerRef = useCallback(
     (node: HTMLDivElement | null) => {
       if (!node || !stripeLib) return;
@@ -134,20 +147,24 @@ function StripePopupContent() {
     return () => clearTimeout(timer);
   }, [stripeSuccess]);
 
-  // Missing params — show error (after all hooks)
-  if (hasMissingParams) {
+  // Waiting for credentials from parent
+  if (!credentials) {
     return (
-      <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50'}`}>
-        <div className="text-center text-red-500">
-          <p className="text-lg font-medium">参数缺失</p>
-          <p className="mt-2 text-sm text-gray-500">请从支付页面正常打开此窗口</p>
+      <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+        <div className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}>
+          <div className="flex items-center justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#635bff] border-t-transparent" />
+            <span className={`ml-3 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              正在初始化...
+            </span>
+          </div>
         </div>
       </div>
     );
   }
 
-  // For direct confirm methods, show a loading/redirecting state
-  if (directConfirmMethod) {
+  // Alipay direct confirm: show loading/redirecting state
+  if (isAlipay) {
     return (
       <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
         <div className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}>

@@ -177,6 +177,7 @@ export default function PaymentQRCode({
     const { stripe, elements } = stripeLib;
     const returnUrl = new URL(window.location.href);
     returnUrl.pathname = '/pay/result';
+    returnUrl.search = '';
     returnUrl.searchParams.set('order_id', orderId);
     returnUrl.searchParams.set('status', 'success');
 
@@ -202,12 +203,11 @@ export default function PaymentQRCode({
   const handleOpenPopup = () => {
     if (!clientSecret || !stripePublishableKey) return;
     setPopupBlocked(false);
+    // Only pass display params in URL — sensitive data sent via postMessage
     const popupUrl = new URL(window.location.href);
     popupUrl.pathname = '/pay/stripe-popup';
     popupUrl.search = '';
     popupUrl.searchParams.set('order_id', orderId);
-    popupUrl.searchParams.set('client_secret', clientSecret);
-    popupUrl.searchParams.set('pk', stripePublishableKey);
     popupUrl.searchParams.set('amount', String(amount));
     popupUrl.searchParams.set('theme', dark ? 'dark' : 'light');
     popupUrl.searchParams.set('method', stripePaymentMethod);
@@ -219,7 +219,19 @@ export default function PaymentQRCode({
     );
     if (!popup || popup.closed) {
       setPopupBlocked(true);
+      return;
     }
+    // Send sensitive data via postMessage after popup loads
+    const onReady = (event: MessageEvent) => {
+      if (event.source !== popup || event.data?.type !== 'STRIPE_POPUP_READY') return;
+      window.removeEventListener('message', onReady);
+      popup.postMessage({
+        type: 'STRIPE_POPUP_INIT',
+        clientSecret,
+        publishableKey: stripePublishableKey,
+      }, window.location.origin);
+    };
+    window.addEventListener('message', onReady);
   };
 
   useEffect(() => {
