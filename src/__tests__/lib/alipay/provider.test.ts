@@ -37,12 +37,12 @@ describe('AlipayProvider', () => {
   });
 
   describe('metadata', () => {
-    it('should have name "alipay-direct"', () => {
-      expect(provider.name).toBe('alipay-direct');
+    it('should have name "alipay"', () => {
+      expect(provider.name).toBe('alipay');
     });
 
-    it('should have providerKey "alipaydirect"', () => {
-      expect(provider.providerKey).toBe('alipaydirect');
+    it('should have providerKey "alipay"', () => {
+      expect(provider.providerKey).toBe('alipay');
     });
 
     it('should support "alipay" payment type', () => {

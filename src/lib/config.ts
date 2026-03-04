@@ -28,7 +28,7 @@ const envSchema = z.object({
   EASY_PAY_CID_ALIPAY: optionalTrimmedString,
   EASY_PAY_CID_WXPAY: optionalTrimmedString,
 
-  // ── 支付宝直连（PAYMENT_PROVIDERS 含 alipaydirect 时必填） ──
+  // ── 支付宝直连（PAYMENT_PROVIDERS 含 alipay 时必填） ──
   ALIPAY_APP_ID: optionalTrimmedString,
   ALIPAY_PRIVATE_KEY: optionalTrimmedString,
   ALIPAY_PUBLIC_KEY: optionalTrimmedString,

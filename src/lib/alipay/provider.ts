@@ -14,8 +14,8 @@ import { getEnv } from '@/lib/config';
 import type { AlipayTradeQueryResponse, AlipayTradeRefundResponse, AlipayTradeCloseResponse } from './types';
 
 export class AlipayProvider implements PaymentProvider {
-  readonly name = 'alipay-direct';
-  readonly providerKey = 'alipaydirect';
+  readonly name = 'alipay';
+  readonly providerKey = 'alipay';
   readonly supportedTypes: PaymentType[] = ['alipay'];
   readonly defaultLimits = {
     alipay: { singleMax: 1000, dailyMax: 10000 },

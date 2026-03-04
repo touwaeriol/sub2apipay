@@ -32,9 +32,9 @@ export function initPaymentProviders(): void {
     paymentRegistry.register(new EasyPayProvider());
   }
 
-  if (providers.includes('alipaydirect')) {
+  if (providers.includes('alipay')) {
     if (!env.ALIPAY_APP_ID || !env.ALIPAY_PRIVATE_KEY) {
-      throw new Error('PAYMENT_PROVIDERS 含 alipaydirect，但缺少 ALIPAY_APP_ID 或 ALIPAY_PRIVATE_KEY');
+      throw new Error('PAYMENT_PROVIDERS 含 alipay，但缺少 ALIPAY_APP_ID 或 ALIPAY_PRIVATE_KEY');
     }
     paymentRegistry.register(new AlipayProvider());
   }
