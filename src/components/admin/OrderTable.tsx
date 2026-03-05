@@ -86,7 +86,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
                   </span>
                 </td>
                 <td className={tdMuted}>
-                  {order.paymentType === 'alipay' ? '支付宝' : '微信支付'}
+                  {order.paymentType === 'alipay' ? '支付宝' : order.paymentType === 'wechat' ? '微信支付' : order.paymentType === 'stripe' ? 'Stripe' : order.paymentType}
                 </td>
                 <td className={tdMuted}>
                   {order.srcHost || '-'}

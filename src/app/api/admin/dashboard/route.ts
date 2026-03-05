@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { OrderStatus } from '@prisma/client';
 
-/** 格式化 Date 为 YYYY-MM-DD（使用本地时区，与 PostgreSQL DATE() 一致） */
-function toDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+/** 业务时区偏移（东八区，+8 小时） */
+const BIZ_TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
+const BIZ_TZ_NAME = 'Asia/Shanghai';
+
+/** 获取业务时区下的 YYYY-MM-DD */
+function toBizDateStr(d: Date): string {
+  const local = new Date(d.getTime() + BIZ_TZ_OFFSET_MS);
+  return local.toISOString().split('T')[0];
+}
+
+/** 获取业务时区下"今天 00:00"对应的 UTC 时间 */
+function getBizDayStartUTC(d: Date): Date {
+  const bizDateStr = toBizDateStr(d);
+  // bizDateStr 00:00 在业务时区 = bizDateStr 00:00 - offset 在 UTC
+  return new Date(`${bizDateStr}T00:00:00+08:00`);
 }
 
 export async function GET(request: NextRequest) {
@@ -18,12 +28,8 @@ export async function GET(request: NextRequest) {
   const days = Math.min(365, Math.max(1, Number(searchParams.get('days') || '30')));
 
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - days);
-  startDate.setHours(0, 0, 0, 0);
-
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = getBizDayStartUTC(now);
+  const startDate = new Date(todayStart.getTime() - days * 24 * 60 * 60 * 1000);
 
   const paidStatuses: OrderStatus[] = [
     OrderStatus.PAID,
@@ -52,16 +58,18 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
       // Total orders
       prisma.order.count(),
-      // Daily series (raw query for DATE truncation)
+      // Daily series: use AT TIME ZONE to group by business timezone date
+      // Prisma.raw() inlines the timezone name to avoid parameterization mismatch between SELECT and GROUP BY
       prisma.$queryRaw<{ date: string; amount: string; count: bigint }[]>`
-        SELECT DATE(paid_at) as date, SUM(amount)::text as amount, COUNT(*) as count
+        SELECT (paid_at AT TIME ZONE 'UTC' AT TIME ZONE ${Prisma.raw(`'${BIZ_TZ_NAME}'`)})::date::text as date,
+               SUM(amount)::text as amount, COUNT(*) as count
         FROM orders
         WHERE status IN ('PAID', 'RECHARGING', 'COMPLETED', 'REFUNDING', 'REFUNDED', 'REFUND_FAILED')
           AND paid_at >= ${startDate}
-        GROUP BY DATE(paid_at)
+        GROUP BY (paid_at AT TIME ZONE 'UTC' AT TIME ZONE ${Prisma.raw(`'${BIZ_TZ_NAME}'`)})::date
         ORDER BY date
       `,
-      // Leaderboard: GROUP BY user_id only, MAX() for name/email to avoid splitting rows on name changes
+      // Leaderboard: GROUP BY user_id only, MAX() for name/email
       prisma.$queryRaw<
         { user_id: number; user_name: string | null; user_email: string | null; total_amount: string; order_count: bigint }[]
       >`
@@ -83,21 +91,28 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-  // Fill missing dates for continuous line chart (use local timezone consistently)
+  // Fill missing dates for continuous line chart
   const dailyMap = new Map<string, { amount: number; count: number }>();
   for (const row of dailyRaw) {
-    const dateStr = typeof row.date === 'string' ? row.date : toDateStr(new Date(row.date));
-    dailyMap.set(dateStr, { amount: Number(row.amount), count: Number(row.count) });
+    dailyMap.set(row.date, { amount: Number(row.amount), count: Number(row.count) });
   }
 
   const dailySeries: { date: string; amount: number; count: number }[] = [];
   const cursor = new Date(startDate);
   while (cursor <= now) {
-    const dateStr = toDateStr(cursor);
+    const dateStr = toBizDateStr(cursor);
     const entry = dailyMap.get(dateStr);
     dailySeries.push({ date: dateStr, amount: entry?.amount ?? 0, count: entry?.count ?? 0 });
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setTime(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
+
+  // Deduplicate: toBizDateStr on consecutive UTC days near midnight can produce the same biz date
+  const seen = new Set<string>();
+  const deduped = dailySeries.filter((d) => {
+    if (seen.has(d.date)) return false;
+    seen.add(d.date);
+    return true;
+  });
 
   // Calculate summary
   const todayPaidAmount = Number(todayStats._sum?.amount || 0);
@@ -117,7 +132,7 @@ export async function GET(request: NextRequest) {
       successRate: Math.round(successRate * 10) / 10,
       avgAmount: Math.round(avgAmount * 100) / 100,
     },
-    dailySeries,
+    dailySeries: deduped,
     leaderboard: leaderboardRaw.map((row) => ({
       userId: row.user_id,
       userName: row.user_name,
