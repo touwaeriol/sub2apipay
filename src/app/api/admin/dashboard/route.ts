@@ -71,7 +71,13 @@ export async function GET(request: NextRequest) {
       `,
       // Leaderboard: GROUP BY user_id only, MAX() for name/email
       prisma.$queryRaw<
-        { user_id: number; user_name: string | null; user_email: string | null; total_amount: string; order_count: bigint }[]
+        {
+          user_id: number;
+          user_name: string | null;
+          user_email: string | null;
+          total_amount: string;
+          order_count: bigint;
+        }[]
       >`
         SELECT user_id, MAX(user_name) as user_name, MAX(user_email) as user_email,
                SUM(amount)::text as total_amount, COUNT(*) as order_count

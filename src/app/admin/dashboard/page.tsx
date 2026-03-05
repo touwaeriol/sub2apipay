@@ -16,7 +16,13 @@ interface DashboardData {
     avgAmount: number;
   };
   dailySeries: { date: string; amount: number; count: number }[];
-  leaderboard: { userId: number; userName: string | null; userEmail: string | null; totalAmount: number; orderCount: number }[];
+  leaderboard: {
+    userId: number;
+    userName: string | null;
+    userEmail: string | null;
+    totalAmount: number;
+    orderCount: number;
+  }[];
   paymentMethods: { paymentType: string; amount: number; count: number; percentage: number }[];
   meta: { days: number; generatedAt: string };
 }
@@ -79,7 +85,9 @@ function DashboardContent() {
 
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+    isDark
+      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
   const btnActive = [
@@ -97,12 +105,7 @@ function DashboardContent() {
       actions={
         <>
           {DAYS_OPTIONS.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDays(d)}
-              className={days === d ? btnActive : btnBase}
-            >
+            <button key={d} type="button" onClick={() => setDays(d)} className={days === d ? btnActive : btnBase}>
               {d}天
             </button>
           ))}
@@ -116,7 +119,9 @@ function DashboardContent() {
       }
     >
       {error && (
-        <div className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
+        <div
+          className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}
+        >
           {error}
           <button onClick={() => setError('')} className="ml-2 opacity-60 hover:opacity-100">
             ✕

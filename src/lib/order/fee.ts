@@ -33,6 +33,6 @@ export function getMethodFeeRate(paymentType: string): number {
  */
 export function calculatePayAmount(rechargeAmount: number, feeRate: number): number {
   if (feeRate <= 0) return rechargeAmount;
-  const feeAmount = Math.ceil(rechargeAmount * feeRate / 100 * 100) / 100;
+  const feeAmount = Math.ceil(((rechargeAmount * feeRate) / 100) * 100) / 100;
   return Math.round((rechargeAmount + feeAmount) * 100) / 100;
 }

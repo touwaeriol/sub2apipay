@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await verifyAdminToken(request)) return unauthorizedResponse();
+  if (!(await verifyAdminToken(request))) return unauthorizedResponse();
 
   const { id } = await params;
 

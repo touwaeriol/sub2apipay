@@ -93,9 +93,8 @@ export class AlipayProvider implements PaymentProvider {
       tradeNo: params.trade_no || '',
       orderId: params.out_trade_no || '',
       amount: parseFloat(params.total_amount || '0'),
-      status: params.trade_status === 'TRADE_SUCCESS' || params.trade_status === 'TRADE_FINISHED'
-        ? 'success'
-        : 'failed',
+      status:
+        params.trade_status === 'TRADE_SUCCESS' || params.trade_status === 'TRADE_FINISHED' ? 'success' : 'failed',
       rawData: params,
     };
   }

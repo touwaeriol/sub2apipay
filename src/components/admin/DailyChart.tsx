@@ -51,7 +51,8 @@ function CustomTooltip({
       <p className={['mb-1 text-xs', dark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey}>
-          {p.dataKey === 'amount' ? '金额' : '笔数'}: {p.dataKey === 'amount' ? `¥${p.value.toLocaleString()}` : p.value}
+          {p.dataKey === 'amount' ? '金额' : '笔数'}:{' '}
+          {p.dataKey === 'amount' ? `¥${p.value.toLocaleString()}` : p.value}
         </p>
       ))}
     </div>
@@ -63,8 +64,15 @@ export default function DailyChart({ data, dark }: DailyChartProps) {
   const tickInterval = data.length > 30 ? Math.ceil(data.length / 12) - 1 : 0;
   if (data.length === 0) {
     return (
-      <div className={['rounded-xl border p-6', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
-        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>每日充值趋势</h3>
+      <div
+        className={[
+          'rounded-xl border p-6',
+          dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
+        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
+          每日充值趋势
+        </h3>
         <p className={['text-center text-sm py-16', dark ? 'text-slate-500' : 'text-gray-400'].join(' ')}>暂无数据</p>
       </div>
     );
@@ -74,8 +82,15 @@ export default function DailyChart({ data, dark }: DailyChartProps) {
   const gridColor = dark ? '#334155' : '#e2e8f0';
 
   return (
-    <div className={['rounded-xl border p-6', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
-      <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>每日充值趋势</h3>
+    <div
+      className={[
+        'rounded-xl border p-6',
+        dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+      ].join(' ')}
+    >
+      <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
+        每日充值趋势
+      </h3>
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
           <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />

@@ -4,7 +4,7 @@ import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { Prisma, OrderStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
-  if (!await verifyAdminToken(request)) return unauthorizedResponse();
+  if (!(await verifyAdminToken(request))) return unauthorizedResponse();
 
   const searchParams = request.nextUrl.searchParams;
   const page = Math.max(1, Number(searchParams.get('page') || '1'));

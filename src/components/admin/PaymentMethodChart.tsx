@@ -21,16 +21,30 @@ const TYPE_CONFIG: Record<string, { label: string; light: string; dark: string }
 export default function PaymentMethodChart({ data, dark }: PaymentMethodChartProps) {
   if (data.length === 0) {
     return (
-      <div className={['rounded-xl border p-6', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
-        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>支付方式分布</h3>
+      <div
+        className={[
+          'rounded-xl border p-6',
+          dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
+        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
+          支付方式分布
+        </h3>
         <p className={['text-center text-sm py-8', dark ? 'text-slate-500' : 'text-gray-400'].join(' ')}>暂无数据</p>
       </div>
     );
   }
 
   return (
-    <div className={['rounded-xl border p-6', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
-      <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>支付方式分布</h3>
+    <div
+      className={[
+        'rounded-xl border p-6',
+        dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+      ].join(' ')}
+    >
+      <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
+        支付方式分布
+      </h3>
       <div className="space-y-4">
         {data.map((method) => {
           const config = TYPE_CONFIG[method.paymentType] || {
@@ -46,7 +60,11 @@ export default function PaymentMethodChart({ data, dark }: PaymentMethodChartPro
                   ¥{method.amount.toLocaleString()} · {method.percentage}%
                 </span>
               </div>
-              <div className={['h-3 w-full overflow-hidden rounded-full', dark ? 'bg-slate-700' : 'bg-slate-100'].join(' ')}>
+              <div
+                className={['h-3 w-full overflow-hidden rounded-full', dark ? 'bg-slate-700' : 'bg-slate-100'].join(
+                  ' ',
+                )}
+              >
                 <div
                   className={['h-full rounded-full transition-all', dark ? config.dark : config.light].join(' ')}
                   style={{ width: `${method.percentage}%` }}

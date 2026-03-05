@@ -26,15 +26,27 @@ export default function Leaderboard({ data, dark }: LeaderboardProps) {
 
   if (data.length === 0) {
     return (
-      <div className={['rounded-xl border p-6', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
-        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>充值排行榜 (Top 10)</h3>
+      <div
+        className={[
+          'rounded-xl border p-6',
+          dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
+        <h3 className={['mb-4 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
+          充值排行榜 (Top 10)
+        </h3>
         <p className={['text-center text-sm py-8', dark ? 'text-slate-500' : 'text-gray-400'].join(' ')}>暂无数据</p>
       </div>
     );
   }
 
   return (
-    <div className={['rounded-xl border', dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
+    <div
+      className={[
+        'rounded-xl border',
+        dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
+      ].join(' ')}
+    >
       <h3 className={['px-6 pt-5 pb-2 text-sm font-semibold', dark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
         充值排行榜 (Top 10)
       </h3>
@@ -56,7 +68,9 @@ export default function Leaderboard({ data, dark }: LeaderboardProps) {
                 <tr key={entry.userId} className={dark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}>
                   <td className="whitespace-nowrap px-4 py-3 text-sm">
                     {rankStyle ? (
-                      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dark ? rankStyle.dark : rankStyle.light}`}>
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dark ? rankStyle.dark : rankStyle.light}`}
+                      >
                         {rank}
                       </span>
                     ) : (
@@ -71,7 +85,9 @@ export default function Leaderboard({ data, dark }: LeaderboardProps) {
                       </div>
                     )}
                   </td>
-                  <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${dark ? 'text-slate-200' : 'text-slate-900'}`}>
+                  <td
+                    className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${dark ? 'text-slate-200' : 'text-slate-900'}`}
+                  >
                     ¥{entry.totalAmount.toLocaleString()}
                   </td>
                   <td className={tdMuted}>{entry.orderCount}</td>

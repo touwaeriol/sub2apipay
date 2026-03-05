@@ -17,9 +17,7 @@ function getCommonParams(appId: string): Record<string, string> {
 
 function assertAlipayEnv(env: ReturnType<typeof getEnv>) {
   if (!env.ALIPAY_APP_ID || !env.ALIPAY_PRIVATE_KEY || !env.ALIPAY_PUBLIC_KEY) {
-    throw new Error(
-      'Alipay environment variables (ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_PUBLIC_KEY) are required',
-    );
+    throw new Error('Alipay environment variables (ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_PUBLIC_KEY) are required');
   }
   return env as typeof env & {
     ALIPAY_APP_ID: string;

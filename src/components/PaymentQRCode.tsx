@@ -27,7 +27,8 @@ const TEXT_GO_PAY = '\u70B9\u51FB\u524D\u5F80\u652F\u4ED8';
 const TEXT_SCAN_PAY = '\u8BF7\u4F7F\u7528\u652F\u4ED8\u5E94\u7528\u626B\u7801\u652F\u4ED8';
 const TEXT_BACK = '\u8FD4\u56DE';
 const TEXT_CANCEL_ORDER = '\u53D6\u6D88\u8BA2\u5355';
-const TEXT_H5_HINT = '\u652F\u4ED8\u5B8C\u6210\u540E\u8BF7\u8FD4\u56DE\u6B64\u9875\u9762\uFF0C\u7CFB\u7EDF\u5C06\u81EA\u52A8\u786E\u8BA4';
+const TEXT_H5_HINT =
+  '\u652F\u4ED8\u5B8C\u6210\u540E\u8BF7\u8FD4\u56DE\u6B64\u9875\u9762\uFF0C\u7CFB\u7EDF\u5C06\u81EA\u52A8\u786E\u8BA4';
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED', 'REFUND_FAILED']);
 
 export default function PaymentQRCode({
@@ -215,11 +216,7 @@ export default function PaymentQRCode({
     popupUrl.searchParams.set('theme', dark ? 'dark' : 'light');
     popupUrl.searchParams.set('method', stripePaymentMethod);
 
-    const popup = window.open(
-      popupUrl.toString(),
-      'stripe_payment',
-      'width=500,height=700,scrollbars=yes',
-    );
+    const popup = window.open(popupUrl.toString(), 'stripe_payment', 'width=500,height=700,scrollbars=yes');
     if (!popup || popup.closed) {
       setPopupBlocked(true);
       return;
@@ -228,11 +225,14 @@ export default function PaymentQRCode({
     const onReady = (event: MessageEvent) => {
       if (event.source !== popup || event.data?.type !== 'STRIPE_POPUP_READY') return;
       window.removeEventListener('message', onReady);
-      popup.postMessage({
-        type: 'STRIPE_POPUP_INIT',
-        clientSecret,
-        publishableKey: stripePublishableKey,
-      }, window.location.origin);
+      popup.postMessage(
+        {
+          type: 'STRIPE_POPUP_INIT',
+          clientSecret,
+          publishableKey: stripePublishableKey,
+        },
+        window.location.origin,
+      );
     };
     window.addEventListener('message', onReady);
   };
@@ -324,7 +324,9 @@ export default function PaymentQRCode({
         <div className="text-6xl text-green-600">{'\u2713'}</div>
         <h2 className="text-xl font-bold text-green-600">{'\u8BA2\u5355\u5DF2\u652F\u4ED8'}</h2>
         <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
-          {'\u8BE5\u8BA2\u5355\u5DF2\u652F\u4ED8\u5B8C\u6210\uFF0C\u65E0\u6CD5\u53D6\u6D88\u3002\u5145\u503C\u5C06\u81EA\u52A8\u5230\u8D26\u3002'}
+          {
+            '\u8BE5\u8BA2\u5355\u5DF2\u652F\u4ED8\u5B8C\u6210\uFF0C\u65E0\u6CD5\u53D6\u6D88\u3002\u5145\u503C\u5C06\u81EA\u52A8\u5230\u8D26\u3002'
+          }
         </p>
         <button
           onClick={onBack}
@@ -339,7 +341,10 @@ export default function PaymentQRCode({
   return (
     <div className="flex flex-col items-center space-y-4">
       <div className="text-center">
-        <div className="text-4xl font-bold text-blue-600">{'\u00A5'}{displayAmount.toFixed(2)}</div>
+        <div className="text-4xl font-bold text-blue-600">
+          {'\u00A5'}
+          {displayAmount.toFixed(2)}
+        </div>
         {hasFeeDiff && (
           <div className={['mt-1 text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
             到账 ¥{amount.toFixed(2)}
@@ -355,7 +360,12 @@ export default function PaymentQRCode({
           {isStripe ? (
             <div className="w-full max-w-md space-y-4">
               {!clientSecret || !stripePublishableKey ? (
-                <div className={['rounded-lg border-2 border-dashed p-8 text-center', dark ? 'border-slate-700' : 'border-gray-300'].join(' ')}>
+                <div
+                  className={[
+                    'rounded-lg border-2 border-dashed p-8 text-center',
+                    dark ? 'border-slate-700' : 'border-gray-300',
+                  ].join(' ')}
+                >
                   <p className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
                     支付初始化失败，请返回重试
                   </p>
@@ -368,14 +378,15 @@ export default function PaymentQRCode({
                   </span>
                 </div>
               ) : stripeError && !stripeLib ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                  {stripeError}
-                </div>
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{stripeError}</div>
               ) : (
                 <>
                   <div
                     ref={stripeContainerRef}
-                    className={['rounded-lg border p-4', dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'].join(' ')}
+                    className={[
+                      'rounded-lg border p-4',
+                      dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white',
+                    ].join(' ')}
                   />
                   {stripeError && (
                     <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
@@ -412,7 +423,14 @@ export default function PaymentQRCode({
                     </button>
                   )}
                   {popupBlocked && (
-                    <div className={['rounded-lg border p-3 text-sm', dark ? 'border-amber-700 bg-amber-900/30 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'].join(' ')}>
+                    <div
+                      className={[
+                        'rounded-lg border p-3 text-sm',
+                        dark
+                          ? 'border-amber-700 bg-amber-900/30 text-amber-300'
+                          : 'border-amber-200 bg-amber-50 text-amber-700',
+                      ].join(' ')}
+                    >
                       弹出窗口被浏览器拦截，请允许本站弹出窗口后重试
                     </div>
                   )}
@@ -437,7 +455,12 @@ export default function PaymentQRCode({
           ) : (
             <>
               {qrDataUrl && (
-                <div className={['relative rounded-lg border p-4', dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'].join(' ')}>
+                <div
+                  className={[
+                    'relative rounded-lg border p-4',
+                    dark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white',
+                  ].join(' ')}
+                >
                   {imageLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/10">
                       <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -465,7 +488,12 @@ export default function PaymentQRCode({
 
               {!qrDataUrl && !payUrl && (
                 <div className="text-center">
-                  <div className={['rounded-lg border-2 border-dashed p-8', dark ? 'border-slate-700' : 'border-gray-300'].join(' ')}>
+                  <div
+                    className={[
+                      'rounded-lg border-2 border-dashed p-8',
+                      dark ? 'border-slate-700' : 'border-gray-300',
+                    ].join(' ')}
+                  >
                     <p className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>{TEXT_SCAN_PAY}</p>
                   </div>
                 </div>
@@ -484,7 +512,9 @@ export default function PaymentQRCode({
           onClick={onBack}
           className={[
             'flex-1 rounded-lg border py-2 text-sm',
-            dark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+            dark
+              ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
+              : 'border-gray-300 text-gray-600 hover:bg-gray-50',
           ].join(' ')}
         >
           {TEXT_BACK}

@@ -51,7 +51,7 @@ export function initPaymentProviders(): void {
   if (unsupported.length > 0) {
     throw new Error(
       `ENABLED_PAYMENT_TYPES 含 [${unsupported.join(', ')}]，但没有对应的 PAYMENT_PROVIDERS 注册。` +
-      `请检查 PAYMENT_PROVIDERS 配置`,
+        `请检查 PAYMENT_PROVIDERS 配置`,
     );
   }
 

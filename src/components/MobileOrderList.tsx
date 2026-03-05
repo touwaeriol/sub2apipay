@@ -125,9 +125,7 @@ export default function MobileOrderList({
           {hasMore && (
             <div ref={sentinelRef} className="py-3 text-center">
               {loadingMore ? (
-                <span className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-                  加载中...
-                </span>
+                <span className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>加载中...</span>
               ) : (
                 <span className={['text-xs', isDark ? 'text-slate-600' : 'text-slate-300'].join(' ')}>
                   上滑加载更多

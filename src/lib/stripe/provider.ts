@@ -67,7 +67,10 @@ export class StripeProvider implements PaymentProvider {
     };
   }
 
-  async verifyNotification(rawBody: string | Buffer, headers: Record<string, string>): Promise<PaymentNotification | null> {
+  async verifyNotification(
+    rawBody: string | Buffer,
+    headers: Record<string, string>,
+  ): Promise<PaymentNotification | null> {
     const stripe = this.getClient();
     const env = getEnv();
     if (!env.STRIPE_WEBHOOK_SECRET) throw new Error('STRIPE_WEBHOOK_SECRET not configured');

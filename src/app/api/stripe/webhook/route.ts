@@ -27,9 +27,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Stripe webhook error:', error);
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 400 });
   }
 }

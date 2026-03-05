@@ -65,11 +65,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const alreadyPaid = Number(dailyAgg._sum.amount ?? 0);
     if (alreadyPaid + input.amount > env.MAX_DAILY_RECHARGE_AMOUNT) {
       const remaining = Math.max(0, env.MAX_DAILY_RECHARGE_AMOUNT - alreadyPaid);
-      throw new OrderError(
-        'DAILY_LIMIT_EXCEEDED',
-        `今日累计充值已达上限，剩余可充值 ${remaining.toFixed(2)} 元`,
-        429,
-      );
+      throw new OrderError('DAILY_LIMIT_EXCEEDED', `今日累计充值已达上限，剩余可充值 ${remaining.toFixed(2)} 元`, 429);
     }
   }
 
@@ -605,7 +601,12 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
       });
     }
 
-    await subtractBalance(order.userId, rechargeAmount, `sub2apipay refund order:${order.id}`, `sub2apipay:refund:${order.id}`);
+    await subtractBalance(
+      order.userId,
+      rechargeAmount,
+      `sub2apipay refund order:${order.id}`,
+      `sub2apipay:refund:${order.id}`,
+    );
 
     await prisma.order.update({
       where: { id: input.orderId },

@@ -169,7 +169,9 @@ function AdminContent() {
 
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+    isDark
+      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
   return (
@@ -191,7 +193,9 @@ function AdminContent() {
       }
     >
       {error && (
-        <div className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
+        <div
+          className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}
+        >
           {error}
           <button onClick={() => setError('')} className="ml-2 opacity-60 hover:opacity-100">
             ✕
@@ -211,8 +215,12 @@ function AdminContent() {
             className={[
               'rounded-full px-3 py-1 text-sm transition-colors',
               statusFilter === s
-                ? (isDark ? 'bg-indigo-500/30 text-indigo-200 ring-1 ring-indigo-400/40' : 'bg-blue-600 text-white')
-                : (isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'),
+                ? isDark
+                  ? 'bg-indigo-500/30 text-indigo-200 ring-1 ring-indigo-400/40'
+                  : 'bg-blue-600 text-white'
+                : isDark
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
             ].join(' ')}
           >
             {statusLabels[s]}
@@ -221,11 +229,22 @@ function AdminContent() {
       </div>
 
       {/* Table */}
-      <div className={['rounded-xl border', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
+      <div
+        className={[
+          'rounded-xl border',
+          isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
         {loading ? (
           <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>加载中...</div>
         ) : (
-          <OrderTable orders={orders} onRetry={handleRetry} onCancel={handleCancel} onViewDetail={handleViewDetail} dark={isDark} />
+          <OrderTable
+            orders={orders}
+            onRetry={handleRetry}
+            onCancel={handleCancel}
+            onViewDetail={handleViewDetail}
+            dark={isDark}
+          />
         )}
       </div>
 
@@ -236,7 +255,10 @@ function AdminContent() {
         pageSize={pageSize}
         loading={loading}
         onPageChange={(p) => setPage(p)}
-        onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
         isDark={isDark}
       />
 

@@ -72,16 +72,18 @@ function StripePopupContent() {
 
         if (isAlipay) {
           // Alipay: confirm directly and redirect, no Payment Element needed
-          stripe.confirmAlipayPayment(clientSecret, {
-            return_url: buildReturnUrl(),
-          }).then((result) => {
-            if (cancelled) return;
-            if (result.error) {
-              setStripeError(result.error.message || '支付失败，请重试');
-              setStripeLoaded(true);
-            }
-            // If no error, the page has already been redirected
-          });
+          stripe
+            .confirmAlipayPayment(clientSecret, {
+              return_url: buildReturnUrl(),
+            })
+            .then((result) => {
+              if (cancelled) return;
+              if (result.error) {
+                setStripeError(result.error.message || '支付失败，请重试');
+                setStripeLoaded(true);
+              }
+              // If no error, the page has already been redirected
+            });
           return;
         }
 
@@ -97,7 +99,9 @@ function StripePopupContent() {
         setStripeLoaded(true);
       });
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [credentials, isDark, isAlipay, buildReturnUrl]);
 
   // Mount Payment Element (only for non-alipay methods)
@@ -151,12 +155,12 @@ function StripePopupContent() {
   if (!credentials) {
     return (
       <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-        <div className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}>
+        <div
+          className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}
+        >
           <div className="flex items-center justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#635bff] border-t-transparent" />
-            <span className={`ml-3 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              正在初始化...
-            </span>
+            <span className={`ml-3 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>正在初始化...</span>
           </div>
         </div>
       </div>
@@ -167,18 +171,19 @@ function StripePopupContent() {
   if (isAlipay) {
     return (
       <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-        <div className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}>
+        <div
+          className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}
+        >
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{'\u00A5'}{amount.toFixed(2)}</div>
-            <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              订单号: {orderId}
-            </p>
+            <div className="text-3xl font-bold text-blue-600">
+              {'\u00A5'}
+              {amount.toFixed(2)}
+            </div>
+            <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>订单号: {orderId}</p>
           </div>
           {stripeError ? (
             <div className="space-y-3">
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                {stripeError}
-              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{stripeError}</div>
               <button
                 type="button"
                 onClick={() => window.close()}
@@ -202,20 +207,21 @@ function StripePopupContent() {
 
   return (
     <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-      <div className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}>
+      <div
+        className={`w-full max-w-md space-y-4 rounded-2xl border p-6 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'} shadow-lg`}
+      >
         <div className="text-center">
-          <div className="text-3xl font-bold text-blue-600">{'\u00A5'}{amount.toFixed(2)}</div>
-          <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            订单号: {orderId}
-          </p>
+          <div className="text-3xl font-bold text-blue-600">
+            {'\u00A5'}
+            {amount.toFixed(2)}
+          </div>
+          <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>订单号: {orderId}</p>
         </div>
 
         {!stripeLoaded ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#635bff] border-t-transparent" />
-            <span className={`ml-3 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              正在加载支付表单...
-            </span>
+            <span className={`ml-3 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>正在加载支付表单...</span>
           </div>
         ) : stripeSuccess ? (
           <div className="py-6 text-center">
@@ -234,9 +240,7 @@ function StripePopupContent() {
         ) : (
           <>
             {stripeError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                {stripeError}
-              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{stripeError}</div>
             )}
             <div
               ref={stripeContainerRef}

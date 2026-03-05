@@ -11,10 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const env = getEnv();
-    const [user, methodLimits] = await Promise.all([
-      getUser(userId),
-      queryMethodLimits(env.ENABLED_PAYMENT_TYPES),
-    ]);
+    const [user, methodLimits] = await Promise.all([getUser(userId), queryMethodLimits(env.ENABLED_PAYMENT_TYPES)]);
 
     return NextResponse.json({
       user: {
@@ -29,9 +26,10 @@ export async function GET(request: NextRequest) {
         methodLimits,
         helpImageUrl: env.PAY_HELP_IMAGE_URL ?? null,
         helpText: env.PAY_HELP_TEXT ?? null,
-        stripePublishableKey: env.ENABLED_PAYMENT_TYPES.includes('stripe') && env.STRIPE_PUBLISHABLE_KEY
-          ? env.STRIPE_PUBLISHABLE_KEY
-          : null,
+        stripePublishableKey:
+          env.ENABLED_PAYMENT_TYPES.includes('stripe') && env.STRIPE_PUBLISHABLE_KEY
+            ? env.STRIPE_PUBLISHABLE_KEY
+            : null,
       },
     });
   } catch (error) {

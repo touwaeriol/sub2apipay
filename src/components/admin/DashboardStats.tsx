@@ -29,24 +29,14 @@ export default function DashboardStats({ summary, dark }: DashboardStatsProps) {
           key={card.label}
           className={[
             'rounded-xl border p-4',
-            dark
-              ? 'border-slate-700 bg-slate-800/60'
-              : 'border-slate-200 bg-white shadow-sm',
+            dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white shadow-sm',
           ].join(' ')}
         >
-          <p className={['text-xs font-medium', dark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-            {card.label}
-          </p>
+          <p className={['text-xs font-medium', dark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>{card.label}</p>
           <p
             className={[
               'mt-1 text-xl font-semibold tracking-tight',
-              card.accent
-                ? dark
-                  ? 'text-indigo-400'
-                  : 'text-indigo-600'
-                : dark
-                  ? 'text-slate-100'
-                  : 'text-slate-900',
+              card.accent ? (dark ? 'text-indigo-400' : 'text-indigo-600') : dark ? 'text-slate-100' : 'text-slate-900',
             ].join(' ')}
           >
             {card.value}

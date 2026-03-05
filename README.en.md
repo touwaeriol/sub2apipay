@@ -34,15 +34,15 @@ Sub2ApiPay is a self-hosted recharge payment gateway built for the [Sub2API](htt
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 + React 19 |
-| Styling | TailwindCSS 4 |
-| ORM | Prisma 7 (adapter-pg mode) |
-| Database | PostgreSQL 16 |
-| Container | Docker + Docker Compose |
-| Package Manager | pnpm |
+| Category        | Technology                 |
+| --------------- | -------------------------- |
+| Framework       | Next.js 16 (App Router)    |
+| Language        | TypeScript 5 + React 19    |
+| Styling         | TailwindCSS 4              |
+| ORM             | Prisma 7 (adapter-pg mode) |
+| Database        | PostgreSQL 16              |
+| Container       | Docker + Docker Compose    |
+| Package Manager | pnpm                       |
 
 ---
 
@@ -85,12 +85,12 @@ See [`.env.example`](./.env.example) for the full template.
 
 ### Core (Required)
 
-| Variable | Description |
-|----------|-------------|
-| `SUB2API_BASE_URL` | Sub2API service URL, e.g. `https://sub2api.com` |
-| `SUB2API_ADMIN_API_KEY` | Sub2API admin API key |
-| `ADMIN_TOKEN` | Admin panel access token (use a strong random string) |
-| `NEXT_PUBLIC_APP_URL` | Public URL of this service, e.g. `https://pay.example.com` |
+| Variable                | Description                                                |
+| ----------------------- | ---------------------------------------------------------- |
+| `SUB2API_BASE_URL`      | Sub2API service URL, e.g. `https://sub2api.com`            |
+| `SUB2API_ADMIN_API_KEY` | Sub2API admin API key                                      |
+| `ADMIN_TOKEN`           | Admin panel access token (use a strong random string)      |
+| `NEXT_PUBLIC_APP_URL`   | Public URL of this service, e.g. `https://pay.example.com` |
 
 > `DATABASE_URL` is automatically injected by Docker Compose when using the bundled database.
 
@@ -127,49 +127,50 @@ Any payment provider compatible with the **EasyPay protocol** can be used, such 
 
 > **Disclaimer**: Please evaluate the security, reliability, and compliance of any third-party payment provider on your own. This project does not endorse or guarantee any specific provider.
 
-| Variable | Description |
-|----------|-------------|
-| `EASY_PAY_PID` | EasyPay merchant ID |
-| `EASY_PAY_PKEY` | EasyPay merchant secret key |
-| `EASY_PAY_API_BASE` | EasyPay API base URL |
+| Variable              | Description                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| `EASY_PAY_PID`        | EasyPay merchant ID                                              |
+| `EASY_PAY_PKEY`       | EasyPay merchant secret key                                      |
+| `EASY_PAY_API_BASE`   | EasyPay API base URL                                             |
 | `EASY_PAY_NOTIFY_URL` | Async callback URL: `${NEXT_PUBLIC_APP_URL}/api/easy-pay/notify` |
-| `EASY_PAY_RETURN_URL` | Redirect URL after payment: `${NEXT_PUBLIC_APP_URL}/pay` |
-| `EASY_PAY_CID_ALIPAY` | Alipay channel ID (optional) |
-| `EASY_PAY_CID_WXPAY` | WeChat Pay channel ID (optional) |
+| `EASY_PAY_RETURN_URL` | Redirect URL after payment: `${NEXT_PUBLIC_APP_URL}/pay`         |
+| `EASY_PAY_CID_ALIPAY` | Alipay channel ID (optional)                                     |
+| `EASY_PAY_CID_WXPAY`  | WeChat Pay channel ID (optional)                                 |
 
 #### Stripe
 
-| Variable | Description |
-|----------|-------------|
-| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_...`) |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_live_...`) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) |
+| Variable                 | Description                                 |
+| ------------------------ | ------------------------------------------- |
+| `STRIPE_SECRET_KEY`      | Stripe secret key (`sk_live_...`)           |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_live_...`)      |
+| `STRIPE_WEBHOOK_SECRET`  | Stripe webhook signing secret (`whsec_...`) |
 
 > Stripe webhook endpoint: `${NEXT_PUBLIC_APP_URL}/api/stripe/webhook`
 > Subscribe to: `payment_intent.succeeded`, `payment_intent.payment_failed`
 
 ### Business Rules
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MIN_RECHARGE_AMOUNT` | Minimum amount per transaction (CNY) | `1` |
-| `MAX_RECHARGE_AMOUNT` | Maximum amount per transaction (CNY) | `1000` |
-| `MAX_DAILY_RECHARGE_AMOUNT` | Daily cumulative max per user (`0` = unlimited) | `10000` |
-| `ORDER_TIMEOUT_MINUTES` | Order expiry in minutes | `5` |
-| `PRODUCT_NAME` | Product name shown on payment page | `Sub2API Balance Recharge` |
+| Variable                    | Description                                     | Default                    |
+| --------------------------- | ----------------------------------------------- | -------------------------- |
+| `MIN_RECHARGE_AMOUNT`       | Minimum amount per transaction (CNY)            | `1`                        |
+| `MAX_RECHARGE_AMOUNT`       | Maximum amount per transaction (CNY)            | `1000`                     |
+| `MAX_DAILY_RECHARGE_AMOUNT` | Daily cumulative max per user (`0` = unlimited) | `10000`                    |
+| `ORDER_TIMEOUT_MINUTES`     | Order expiry in minutes                         | `5`                        |
+| `PRODUCT_NAME`              | Product name shown on payment page              | `Sub2API Balance Recharge` |
 
 ### UI Customization (Optional)
 
 Display a support contact image and description on the right side of the payment page.
 
-| Variable | Description |
-|----------|-------------|
-| `PAY_HELP_IMAGE_URL` | Help image URL — external URL or local path (see below) |
-| `PAY_HELP_TEXT` | Help text; use `\n` for line breaks, e.g. `Scan to add WeChat\nMon–Fri 9am–6pm` |
+| Variable             | Description                                                                     |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `PAY_HELP_IMAGE_URL` | Help image URL — external URL or local path (see below)                         |
+| `PAY_HELP_TEXT`      | Help text; use `\n` for line breaks, e.g. `Scan to add WeChat\nMon–Fri 9am–6pm` |
 
 **Two ways to provide the image:**
 
 - **External URL** (recommended — no Compose changes needed): any publicly accessible image link (CDN, OSS, image hosting).
+
   ```env
   PAY_HELP_IMAGE_URL=https://cdn.example.com/help-qr.jpg
   ```
@@ -188,9 +189,9 @@ Display a support contact image and description on the right side of the payment
 
 ### Docker Compose Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `APP_PORT` | Host port mapping | `3001` |
+| Variable      | Description                      | Default                               |
+| ------------- | -------------------------------- | ------------------------------------- |
+| `APP_PORT`    | Host port mapping                | `3001`                                |
 | `DB_PASSWORD` | PostgreSQL password (bundled DB) | `password` (**change in production**) |
 
 ---
@@ -266,19 +267,19 @@ docker compose exec app npx prisma migrate deploy
 
 The following page URLs can be configured in the Sub2API admin panel:
 
-| Page | URL | Description |
-|------|-----|-------------|
-| Payment | `https://pay.example.com/pay` | User recharge entry |
-| My Orders | `https://pay.example.com/pay/orders` | User views their own recharge history |
-| Order Management | `https://pay.example.com/admin` | Sub2API admin only |
+| Page             | URL                                  | Description                           |
+| ---------------- | ------------------------------------ | ------------------------------------- |
+| Payment          | `https://pay.example.com/pay`        | User recharge entry                   |
+| My Orders        | `https://pay.example.com/pay/orders` | User views their own recharge history |
+| Order Management | `https://pay.example.com/admin`      | Sub2API admin only                    |
 
 Sub2API **v0.1.88** and above will automatically append the following parameters — no manual query string needed:
 
-| Parameter | Description |
-|-----------|-------------|
-| `user_id` | Sub2API user ID |
-| `token` | User login token (required to view order history) |
-| `theme` | `light` (default) or `dark` |
+| Parameter | Description                                       |
+| --------- | ------------------------------------------------- |
+| `user_id` | Sub2API user ID                                   |
+| `token`   | User login token (required to view order history) |
+| `theme`   | `light` (default) or `dark`                       |
 | `ui_mode` | `standalone` (default) or `embedded` (for iframe) |
 
 ---
@@ -287,13 +288,13 @@ Sub2API **v0.1.88** and above will automatically append the following parameters
 
 Access: `https://pay.example.com/admin?token=YOUR_ADMIN_TOKEN`
 
-| Feature | Description |
-|---------|-------------|
-| Order List | Filter by status, paginate, choose 20/50/100 per page |
-| Order Detail | View all fields and audit log timeline |
-| Retry Recharge | Re-trigger recharge for paid-but-failed orders |
-| Cancel Order | Force-cancel pending orders |
-| Refund | Issue refund and deduct Sub2API balance |
+| Feature        | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| Order List     | Filter by status, paginate, choose 20/50/100 per page |
+| Order Detail   | View all fields and audit log timeline                |
+| Retry Recharge | Re-trigger recharge for paid-but-failed orders        |
+| Cancel Order   | Force-cancel pending orders                           |
+| Refund         | Issue refund and deduct Sub2API balance               |
 
 ---
 

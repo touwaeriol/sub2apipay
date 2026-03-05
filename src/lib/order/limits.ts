@@ -64,9 +64,7 @@ export interface MethodLimitStatus {
  * 批量查询多个支付渠道的今日使用情况。
  * 一次 DB groupBy 完成，调用方按需传入渠道列表。
  */
-export async function queryMethodLimits(
-  paymentTypes: string[],
-): Promise<Record<string, MethodLimitStatus>> {
+export async function queryMethodLimits(paymentTypes: string[]): Promise<Record<string, MethodLimitStatus>> {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
@@ -80,9 +78,7 @@ export async function queryMethodLimits(
     _sum: { amount: true },
   });
 
-  const usageMap = Object.fromEntries(
-    usageRows.map((r) => [r.paymentType, Number(r._sum.amount ?? 0)]),
-  );
+  const usageMap = Object.fromEntries(usageRows.map((r) => [r.paymentType, Number(r._sum.amount ?? 0)]));
 
   const result: Record<string, MethodLimitStatus> = {};
   for (const type of paymentTypes) {

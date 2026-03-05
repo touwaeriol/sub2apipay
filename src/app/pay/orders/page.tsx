@@ -134,17 +134,20 @@ function OrdersContent() {
     loadOrders(1, newSize);
   };
 
-  const filteredOrders =
-    activeFilter === 'ALL' ? orders : orders.filter((o) => o.status === activeFilter);
+  const filteredOrders = activeFilter === 'ALL' ? orders : orders.filter((o) => o.status === activeFilter);
 
   const btnClass = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+    isDark
+      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
   if (isMobile) {
     return (
-      <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <div
+        className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+      >
         正在切换到移动端订单 Tab...
       </div>
     );
@@ -178,8 +181,14 @@ function OrdersContent() {
       subtitle={userInfo?.username || `用户 #${effectiveUserId}`}
       actions={
         <>
-          <button type="button" onClick={() => loadOrders(page, pageSize)} className={btnClass}>刷新</button>
-          {!srcHost && <a href={buildScopedUrl('/pay')} className={btnClass}>返回充值</a>}
+          <button type="button" onClick={() => loadOrders(page, pageSize)} className={btnClass}>
+            刷新
+          </button>
+          {!srcHost && (
+            <a href={buildScopedUrl('/pay')} className={btnClass}>
+              返回充值
+            </a>
+          )}
         </>
       }
     >
@@ -208,7 +217,13 @@ function OrdersContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="text-gray-500">加载中...</div></div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">加载中...</div>
+        </div>
+      }
+    >
       <OrdersContent />
     </Suspense>
   );

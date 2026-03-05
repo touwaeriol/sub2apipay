@@ -84,7 +84,10 @@ export default function OrderDetail({ order, onClose, dark }: OrderDetailProps) 
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold">订单详情</h3>
-          <button onClick={onClose} className={dark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}>
+          <button
+            onClick={onClose}
+            className={dark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}
+          >
             ✕
           </button>
         </div>
@@ -103,16 +106,31 @@ export default function OrderDetail({ order, onClose, dark }: OrderDetailProps) 
           <h4 className={`mb-3 font-medium ${dark ? 'text-slate-100' : 'text-gray-900'}`}>审计日志</h4>
           <div className="space-y-2">
             {order.auditLogs.map((log) => (
-              <div key={log.id} className={`rounded-lg border p-3 ${dark ? 'border-slate-600 bg-slate-700/60' : 'border-gray-100 bg-gray-50'}`}>
+              <div
+                key={log.id}
+                className={`rounded-lg border p-3 ${dark ? 'border-slate-600 bg-slate-700/60' : 'border-gray-100 bg-gray-50'}`}
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{log.action}</span>
-                  <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{new Date(log.createdAt).toLocaleString('zh-CN')}</span>
+                  <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {new Date(log.createdAt).toLocaleString('zh-CN')}
+                  </span>
                 </div>
-                {log.detail && <div className={`mt-1 break-all text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{log.detail}</div>}
-                {log.operator && <div className={`mt-1 text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>操作者: {log.operator}</div>}
+                {log.detail && (
+                  <div className={`mt-1 break-all text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {log.detail}
+                  </div>
+                )}
+                {log.operator && (
+                  <div className={`mt-1 text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
+                    操作者: {log.operator}
+                  </div>
+                )}
               </div>
             ))}
-            {order.auditLogs.length === 0 && <div className={`text-center text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>暂无日志</div>}
+            {order.auditLogs.length === 0 && (
+              <div className={`text-center text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>暂无日志</div>
+            )}
           </div>
         </div>
 

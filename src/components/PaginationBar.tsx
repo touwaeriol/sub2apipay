@@ -35,8 +35,7 @@ export default function PaginationBar({
       {/* 左侧：统计 + 每页大小 */}
       <div className="flex items-center gap-2">
         <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-          共 {total} 条
-          {totalPages > 1 && `，第 ${page} / ${totalPages} 页`}
+          共 {total} 条{totalPages > 1 && `，第 ${page} / ${totalPages} 页`}
         </span>
 
         {onPageSizeChange && (
@@ -47,7 +46,9 @@ export default function PaginationBar({
                 key={s}
                 type="button"
                 disabled={loading}
-                onClick={() => { onPageSizeChange(s); }}
+                onClick={() => {
+                  onPageSizeChange(s);
+                }}
                 className={[
                   'rounded border px-2 py-1 font-medium transition-colors',
                   pageSize === s
