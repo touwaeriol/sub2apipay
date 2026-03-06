@@ -233,7 +233,7 @@ export default function PaymentForm({
           <label className={['mb-2 block text-sm font-medium', dark ? 'text-slate-200' : 'text-gray-700'].join(' ')}>
             支付方式
           </label>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:flex">
             {enabledPaymentTypes.map((type) => {
               const meta = PAYMENT_TYPE_META[type];
               const isSelected = effectivePaymentType === type;
@@ -248,7 +248,7 @@ export default function PaymentForm({
                   onClick={() => !isUnavailable && setPaymentType(type)}
                   title={isUnavailable ? '今日充值额度已满，请使用其他支付方式' : undefined}
                   className={[
-                    'relative flex h-[58px] flex-1 flex-col items-center justify-center rounded-lg border px-3 transition-all',
+                    'relative flex h-[58px] flex-col items-center justify-center rounded-lg border px-3 transition-all sm:flex-1',
                     isUnavailable
                       ? dark
                         ? 'cursor-not-allowed border-slate-700 bg-slate-800/50 opacity-50'
