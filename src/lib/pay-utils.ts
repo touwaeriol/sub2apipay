@@ -70,6 +70,12 @@ export interface PaymentTypeMeta {
   selectedBorder: string;
   selectedBg: string;
   iconBg: string;
+  /** 图标路径（Stripe 不使用外部图标） */
+  iconSrc?: string;
+  /** 图表条形颜色 class */
+  chartBar: { light: string; dark: string };
+  /** 按钮颜色 class（含 hover/active 状态） */
+  buttonClass: string;
 }
 
 export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
@@ -80,6 +86,9 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     selectedBorder: 'border-cyan-400',
     selectedBg: 'bg-cyan-50',
     iconBg: 'bg-[#00AEEF]',
+    iconSrc: '/icons/alipay.svg',
+    chartBar: { light: 'bg-cyan-500', dark: 'bg-cyan-400' },
+    buttonClass: 'bg-[#00AEEF] hover:bg-[#009dd6] active:bg-[#008cbe]',
   },
   alipay_direct: {
     label: '支付宝',
@@ -88,6 +97,9 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     selectedBorder: 'border-blue-500',
     selectedBg: 'bg-blue-50',
     iconBg: 'bg-[#1677FF]',
+    iconSrc: '/icons/alipay.svg',
+    chartBar: { light: 'bg-blue-500', dark: 'bg-blue-400' },
+    buttonClass: 'bg-[#1677FF] hover:bg-[#0958d9] active:bg-[#003eb3]',
   },
   wxpay: {
     label: '微信支付',
@@ -96,6 +108,9 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     selectedBorder: 'border-green-500',
     selectedBg: 'bg-green-50',
     iconBg: 'bg-[#2BB741]',
+    iconSrc: '/icons/wxpay.svg',
+    chartBar: { light: 'bg-green-500', dark: 'bg-green-400' },
+    buttonClass: 'bg-[#2BB741] hover:bg-[#24a038] active:bg-[#1d8a2f]',
   },
   wxpay_direct: {
     label: '微信支付',
@@ -104,6 +119,9 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     selectedBorder: 'border-green-600',
     selectedBg: 'bg-green-50',
     iconBg: 'bg-[#07C160]',
+    iconSrc: '/icons/wxpay.svg',
+    chartBar: { light: 'bg-emerald-500', dark: 'bg-emerald-400' },
+    buttonClass: 'bg-[#07C160] hover:bg-[#06ad56] active:bg-[#05994c]',
   },
   stripe: {
     label: 'Stripe',
@@ -112,6 +130,8 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     selectedBorder: 'border-[#635bff]',
     selectedBg: 'bg-[#635bff]/10',
     iconBg: 'bg-[#635bff]',
+    chartBar: { light: 'bg-purple-500', dark: 'bg-purple-400' },
+    buttonClass: 'bg-[#635bff] hover:bg-[#5249d9] active:bg-[#4840c4]',
   },
 };
 
@@ -128,6 +148,40 @@ export function getPaymentIconType(type: string): string {
   if (type.startsWith('wxpay')) return 'wxpay';
   if (type.startsWith('stripe')) return 'stripe';
   return type;
+}
+
+/** 获取支付方式的元数据，带合理的 fallback */
+export function getPaymentMeta(type: string): PaymentTypeMeta {
+  const base = getPaymentIconType(type);
+  return PAYMENT_TYPE_META[type] || PAYMENT_TYPE_META[base] || PAYMENT_TYPE_META.alipay;
+}
+
+/** 获取支付方式图标路径 */
+export function getPaymentIconSrc(type: string): string {
+  return getPaymentMeta(type).iconSrc || '';
+}
+
+/** 获取支付方式简短标签（如 '支付宝'、'微信'、'Stripe'） */
+export function getPaymentChannelLabel(type: string): string {
+  return getPaymentMeta(type).label;
+}
+
+/** 支付类型谓词函数 */
+export function isStripeType(type: string | undefined | null): boolean {
+  return !!type?.startsWith('stripe');
+}
+
+export function isWxpayType(type: string | undefined | null): boolean {
+  return !!type?.startsWith('wxpay');
+}
+
+export function isAlipayType(type: string | undefined | null): boolean {
+  return !!type?.startsWith('alipay');
+}
+
+/** alipay_direct 使用页面跳转而非二维码 */
+export function isRedirectPayment(type: string | undefined | null): boolean {
+  return type === 'alipay_direct';
 }
 
 export function getStatusBadgeClass(status: string, isDark: boolean): string {

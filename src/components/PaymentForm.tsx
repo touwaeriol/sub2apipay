@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PAYMENT_TYPE_META, getPaymentIconType } from '@/lib/pay-utils';
+import { PAYMENT_TYPE_META, getPaymentIconType, getPaymentMeta } from '@/lib/pay-utils';
 
 export interface MethodLimitInfo {
   available: boolean;
@@ -327,9 +327,7 @@ export default function PaymentForm({
         disabled={!isValid || loading}
         className={`w-full rounded-lg py-3 text-center font-medium text-white transition-colors ${
           isValid && !loading
-            ? effectivePaymentType.startsWith('stripe')
-              ? 'bg-[#635bff] hover:bg-[#5851db] active:bg-[#4b44c7]'
-              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            ? getPaymentMeta(effectivePaymentType).buttonClass
             : dark
               ? 'cursor-not-allowed bg-slate-700 text-slate-300'
               : 'cursor-not-allowed bg-gray-300'

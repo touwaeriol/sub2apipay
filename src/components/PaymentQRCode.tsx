@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import QRCode from 'qrcode';
+import {
+  isStripeType,
+  isRedirectPayment,
+  getPaymentMeta,
+  getPaymentIconSrc,
+  getPaymentChannelLabel,
+} from '@/lib/pay-utils';
 
 interface PaymentQRCodeProps {
   orderId: string;
@@ -71,14 +78,13 @@ export default function PaymentQRCode({
   const paymentMethodListenerAdded = useRef(false);
 
   // alipay_direct 使用电脑网站支付，payUrl 是跳转链接不是二维码内容
-  const isAlipayDirect = paymentType === 'alipay_direct';
+  const isRedirect = isRedirectPayment(paymentType);
 
   const qrPayload = useMemo(() => {
-    // alipay_direct 的 payUrl 是跳转链接，不应生成二维码
-    if (isAlipayDirect && !qrCode) return '';
+    if (isRedirect && !qrCode) return '';
     const value = (qrCode || payUrl || '').trim();
     return value;
-  }, [qrCode, payUrl, isAlipayDirect]);
+  }, [qrCode, payUrl, isRedirect]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +121,7 @@ export default function PaymentQRCode({
   }, [qrPayload]);
 
   // Initialize Stripe Payment Element
-  const isStripe = paymentType?.startsWith('stripe');
+  const isStripe = isStripeType(paymentType);
 
   useEffect(() => {
     if (!isStripe || !clientSecret || !stripePublishableKey) return;
@@ -318,10 +324,10 @@ export default function PaymentQRCode({
     }
   };
 
-  const isWx = paymentType?.startsWith('wxpay');
-  const iconSrc = isStripe ? '' : isWx ? '/icons/wxpay.svg' : '/icons/alipay.svg';
-  const channelLabel = isStripe ? 'Stripe' : isWx ? '\u5FAE\u4FE1' : '\u652F\u4ED8\u5B9D';
-  const iconBgClass = isStripe ? 'bg-[#635bff]' : isWx ? 'bg-[#07C160]' : 'bg-[#1677FF]';
+  const meta = getPaymentMeta(paymentType || 'alipay');
+  const iconSrc = getPaymentIconSrc(paymentType || 'alipay');
+  const channelLabel = getPaymentChannelLabel(paymentType || 'alipay');
+  const iconBgClass = meta.iconBg;
 
   if (cancelBlocked) {
     return (
@@ -414,7 +420,7 @@ export default function PaymentQRCode({
                         'w-full rounded-lg py-3 font-medium text-white shadow-md transition-colors',
                         stripeSubmitting
                           ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-[#635bff] hover:bg-[#5249d9] active:bg-[#4840c4]',
+                          : meta.buttonClass,
                       ].join(' ')}
                     >
                       {stripeSubmitting ? (
@@ -457,16 +463,16 @@ export default function PaymentQRCode({
                 {TEXT_H5_HINT}
               </p>
             </>
-          ) : isAlipayDirect && payUrl ? (
+          ) : isRedirect && payUrl ? (
             <>
               <a
                 href={payUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#1677FF] py-3 font-medium text-white shadow-md hover:bg-[#0958d9] active:bg-[#003eb3]"
+                className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium text-white shadow-md ${meta.buttonClass}`}
               >
-                <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />
-                前往支付宝收银台
+                {iconSrc && <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />}
+                {`前往${channelLabel}收银台`}
               </a>
               <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
                 {TEXT_H5_HINT}

@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback, Suspense } from 'react';
+import { getPaymentMeta } from '@/lib/pay-utils';
 
 function StripePopupContent() {
   const searchParams = useSearchParams();
@@ -254,7 +255,7 @@ function StripePopupContent() {
                 'w-full rounded-lg py-3 font-medium text-white shadow-md transition-colors',
                 stripeSubmitting
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-[#635bff] hover:bg-[#5249d9] active:bg-[#4840c4]',
+                  : getPaymentMeta('stripe').buttonClass,
               ].join(' ')}
             >
               {stripeSubmitting ? (
