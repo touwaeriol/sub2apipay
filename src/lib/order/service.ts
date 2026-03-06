@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { getEnv } from '@/lib/config';
+import { ORDER_STATUS } from '@/lib/constants';
 import { generateRechargeCode } from './code-gen';
 import { getMethodDailyLimit } from './limits';
 import { getMethodFeeRate, calculatePayAmount } from './fee';
@@ -44,7 +45,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   }
 
   const pendingCount = await prisma.order.count({
-    where: { userId: input.userId, status: 'PENDING' },
+    where: { userId: input.userId, status: ORDER_STATUS.PENDING },
   });
   if (pendingCount >= MAX_PENDING_ORDERS) {
     throw new OrderError('TOO_MANY_PENDING', `Too many pending orders (${MAX_PENDING_ORDERS})`, 429);
@@ -57,7 +58,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const dailyAgg = await prisma.order.aggregate({
       where: {
         userId: input.userId,
-        status: { in: ['PAID', 'RECHARGING', 'COMPLETED'] },
+        status: { in: [ORDER_STATUS.PAID, ORDER_STATUS.RECHARGING, ORDER_STATUS.COMPLETED] },
         paidAt: { gte: todayStart },
       },
       _sum: { amount: true },
@@ -77,7 +78,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const methodAgg = await prisma.order.aggregate({
       where: {
         paymentType: input.paymentType,
-        status: { in: ['PAID', 'RECHARGING', 'COMPLETED'] },
+        status: { in: [ORDER_STATUS.PAID, ORDER_STATUS.RECHARGING, ORDER_STATUS.COMPLETED] },
         paidAt: { gte: todayStart },
       },
       _sum: { amount: true },
@@ -158,7 +159,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       amount: input.amount,
       payAmount,
       feeRate,
-      status: 'PENDING',
+      status: ORDER_STATUS.PENDING,
       paymentType: input.paymentType,
       userName: user.username,
       userBalance: user.balance,
@@ -231,7 +232,7 @@ export async function cancelOrderCore(options: {
 
   // 2. DB 更新 (WHERE status='PENDING' 保证幂等)
   const result = await prisma.order.updateMany({
-    where: { id: orderId, status: 'PENDING' },
+    where: { id: orderId, status: ORDER_STATUS.PENDING },
     data: { status: finalStatus, updatedAt: new Date() },
   });
 
@@ -240,7 +241,7 @@ export async function cancelOrderCore(options: {
     await prisma.auditLog.create({
       data: {
         orderId,
-        action: finalStatus === 'EXPIRED' ? 'ORDER_EXPIRED' : 'ORDER_CANCELLED',
+        action: finalStatus === ORDER_STATUS.EXPIRED ? 'ORDER_EXPIRED' : 'ORDER_CANCELLED',
         detail: auditDetail,
         operator,
       },
@@ -258,13 +259,13 @@ export async function cancelOrder(orderId: string, userId: number): Promise<Canc
 
   if (!order) throw new OrderError('NOT_FOUND', 'Order not found', 404);
   if (order.userId !== userId) throw new OrderError('FORBIDDEN', 'Forbidden', 403);
-  if (order.status !== 'PENDING') throw new OrderError('INVALID_STATUS', 'Order cannot be cancelled', 400);
+  if (order.status !== ORDER_STATUS.PENDING) throw new OrderError('INVALID_STATUS', 'Order cannot be cancelled', 400);
 
   return cancelOrderCore({
     orderId: order.id,
     paymentTradeNo: order.paymentTradeNo,
     paymentType: order.paymentType,
-    finalStatus: 'CANCELLED',
+    finalStatus: ORDER_STATUS.CANCELLED,
     operator: `user:${userId}`,
     auditDetail: 'User cancelled order',
   });
@@ -277,13 +278,13 @@ export async function adminCancelOrder(orderId: string): Promise<CancelOutcome> 
   });
 
   if (!order) throw new OrderError('NOT_FOUND', 'Order not found', 404);
-  if (order.status !== 'PENDING') throw new OrderError('INVALID_STATUS', 'Order cannot be cancelled', 400);
+  if (order.status !== ORDER_STATUS.PENDING) throw new OrderError('INVALID_STATUS', 'Order cannot be cancelled', 400);
 
   return cancelOrderCore({
     orderId: order.id,
     paymentTradeNo: order.paymentTradeNo,
     paymentType: order.paymentType,
-    finalStatus: 'CANCELLED',
+    finalStatus: ORDER_STATUS.CANCELLED,
     operator: 'admin',
     auditDetail: 'Admin cancelled order',
   });
@@ -330,10 +331,10 @@ export async function confirmPayment(input: {
   const result = await prisma.order.updateMany({
     where: {
       id: order.id,
-      status: { in: ['PENDING', 'EXPIRED'] },
+      status: { in: [ORDER_STATUS.PENDING, ORDER_STATUS.EXPIRED] },
     },
     data: {
-      status: 'PAID',
+      status: ORDER_STATUS.PAID,
       amount: paidAmount,
       paymentTradeNo: input.tradeNo,
       paidAt: new Date(),
@@ -392,13 +393,13 @@ export async function executeRecharge(orderId: string): Promise<void> {
   if (!order) {
     throw new OrderError('NOT_FOUND', 'Order not found', 404);
   }
-  if (order.status === 'COMPLETED') {
+  if (order.status === ORDER_STATUS.COMPLETED) {
     return;
   }
   if (isRefundStatus(order.status)) {
     throw new OrderError('INVALID_STATUS', 'Refund-related order cannot recharge', 400);
   }
-  if (order.status !== 'PAID' && order.status !== 'FAILED') {
+  if (order.status !== ORDER_STATUS.PAID && order.status !== ORDER_STATUS.FAILED) {
     throw new OrderError('INVALID_STATUS', `Order cannot recharge in status ${order.status}`, 400);
   }
 
@@ -412,7 +413,7 @@ export async function executeRecharge(orderId: string): Promise<void> {
 
     await prisma.order.update({
       where: { id: orderId },
-      data: { status: 'COMPLETED', completedAt: new Date() },
+      data: { status: ORDER_STATUS.COMPLETED, completedAt: new Date() },
     });
 
     await prisma.auditLog.create({
@@ -427,7 +428,7 @@ export async function executeRecharge(orderId: string): Promise<void> {
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: 'FAILED',
+        status: ORDER_STATUS.FAILED,
         failedAt: new Date(),
         failedReason: error instanceof Error ? error.message : String(error),
       },
@@ -455,15 +456,15 @@ function assertRetryAllowed(order: { status: string; paidAt: Date | null }): voi
     throw new OrderError('INVALID_STATUS', 'Refund-related order cannot retry', 400);
   }
 
-  if (order.status === 'FAILED' || order.status === 'PAID') {
+  if (order.status === ORDER_STATUS.FAILED || order.status === ORDER_STATUS.PAID) {
     return;
   }
 
-  if (order.status === 'RECHARGING') {
+  if (order.status === ORDER_STATUS.RECHARGING) {
     throw new OrderError('CONFLICT', 'Order is recharging, retry later', 409);
   }
 
-  if (order.status === 'COMPLETED') {
+  if (order.status === ORDER_STATUS.COMPLETED) {
     throw new OrderError('INVALID_STATUS', 'Order already completed', 400);
   }
 
@@ -490,10 +491,10 @@ export async function retryRecharge(orderId: string): Promise<void> {
   const result = await prisma.order.updateMany({
     where: {
       id: orderId,
-      status: { in: ['FAILED', 'PAID'] },
+      status: { in: [ORDER_STATUS.FAILED, ORDER_STATUS.PAID] },
       paidAt: { not: null },
     },
-    data: { status: 'PAID', failedAt: null, failedReason: null },
+    data: { status: ORDER_STATUS.PAID, failedAt: null, failedReason: null },
   });
 
   if (result.count === 0) {
@@ -511,7 +512,7 @@ export async function retryRecharge(orderId: string): Promise<void> {
     }
 
     const derived = deriveOrderState(latest);
-    if (derived.rechargeStatus === 'recharging' || latest.status === 'PAID') {
+    if (derived.rechargeStatus === 'recharging' || latest.status === ORDER_STATUS.PAID) {
       throw new OrderError('CONFLICT', 'Order is recharging, retry later', 409);
     }
 
@@ -553,7 +554,7 @@ export interface RefundResult {
 export async function processRefund(input: RefundInput): Promise<RefundResult> {
   const order = await prisma.order.findUnique({ where: { id: input.orderId } });
   if (!order) throw new OrderError('NOT_FOUND', 'Order not found', 404);
-  if (order.status !== 'COMPLETED') {
+  if (order.status !== ORDER_STATUS.COMPLETED) {
     throw new OrderError('INVALID_STATUS', 'Only completed orders can be refunded', 400);
   }
 
@@ -580,8 +581,8 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
   }
 
   const lockResult = await prisma.order.updateMany({
-    where: { id: input.orderId, status: 'COMPLETED' },
-    data: { status: 'REFUNDING' },
+    where: { id: input.orderId, status: ORDER_STATUS.COMPLETED },
+    data: { status: ORDER_STATUS.REFUNDING },
   });
   if (lockResult.count === 0) {
     throw new OrderError('CONFLICT', 'Order status changed, refresh and retry', 409);
@@ -609,7 +610,7 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
     await prisma.order.update({
       where: { id: input.orderId },
       data: {
-        status: 'REFUNDED',
+        status: ORDER_STATUS.REFUNDED,
         refundAmount: new Prisma.Decimal(refundAmount.toFixed(2)),
         refundReason: input.reason || null,
         refundAt: new Date(),
@@ -631,7 +632,7 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
     await prisma.order.update({
       where: { id: input.orderId },
       data: {
-        status: 'REFUND_FAILED',
+        status: ORDER_STATUS.REFUND_FAILED,
         failedAt: new Date(),
         failedReason: error instanceof Error ? error.message : String(error),
       },

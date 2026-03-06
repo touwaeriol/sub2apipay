@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { getEnv } from '@/lib/config';
+import { ORDER_STATUS } from '@/lib/constants';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import { getMethodFeeRate } from './fee';
 
@@ -72,7 +73,7 @@ export async function queryMethodLimits(paymentTypes: string[]): Promise<Record<
     by: ['paymentType'],
     where: {
       paymentType: { in: paymentTypes },
-      status: { in: ['PAID', 'RECHARGING', 'COMPLETED'] },
+      status: { in: [ORDER_STATUS.PAID, ORDER_STATUS.RECHARGING, ORDER_STATUS.COMPLETED] },
       paidAt: { gte: todayStart },
     },
     _sum: { amount: true },

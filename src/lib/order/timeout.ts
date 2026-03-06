@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { ORDER_STATUS } from '@/lib/constants';
 import { cancelOrderCore } from './service';
 
 const INTERVAL_MS = 30_000; // 30 seconds
@@ -7,7 +8,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 export async function expireOrders(): Promise<number> {
   const orders = await prisma.order.findMany({
     where: {
-      status: 'PENDING',
+      status: ORDER_STATUS.PENDING,
       expiresAt: { lt: new Date() },
     },
     select: {
@@ -27,7 +28,7 @@ export async function expireOrders(): Promise<number> {
         orderId: order.id,
         paymentTradeNo: order.paymentTradeNo,
         paymentType: order.paymentType,
-        finalStatus: 'EXPIRED',
+        finalStatus: ORDER_STATUS.EXPIRED,
         operator: 'timeout',
         auditDetail: 'Order expired',
       });

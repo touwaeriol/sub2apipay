@@ -1,6 +1,6 @@
 'use client';
 
-import { getPaymentTypeLabel } from '@/lib/pay-utils';
+import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 
 interface AuditLog {
   id: string;
@@ -55,7 +55,8 @@ export default function OrderDetail({ order, onClose, dark }: OrderDetailProps) 
     { label: 'Payment OK', value: order.paymentSuccess ? 'yes' : 'no' },
     { label: 'Recharge OK', value: order.rechargeSuccess ? 'yes' : 'no' },
     { label: 'Recharge Status', value: order.rechargeStatus || '-' },
-    { label: '支付方式', value: getPaymentTypeLabel(order.paymentType) },
+    { label: '支付渠道', value: getPaymentDisplayInfo(order.paymentType).channel },
+    { label: '提供商', value: getPaymentDisplayInfo(order.paymentType).provider || '-' },
     { label: '充值码', value: order.rechargeCode },
     { label: '支付单号', value: order.paymentTradeNo || '-' },
     { label: '客户端IP', value: order.clientIp || '-' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { getPaymentTypeLabel } from '@/lib/pay-utils';
+import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 
 interface Order {
   id: string;
@@ -94,7 +94,21 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
                     {statusInfo.label}
                   </span>
                 </td>
-                <td className={tdMuted}>{getPaymentTypeLabel(order.paymentType)}</td>
+                <td className={tdMuted}>
+                  {(() => {
+                    const { channel, provider } = getPaymentDisplayInfo(order.paymentType);
+                    return (
+                      <>
+                        {channel}
+                        {provider && (
+                          <span className={dark ? 'ml-1 text-xs text-slate-500' : 'ml-1 text-xs text-slate-400'}>
+                            {provider}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </td>
                 <td className={tdMuted}>{order.srcHost || '-'}</td>
                 <td className={tdMuted}>{new Date(order.createdAt).toLocaleString('zh-CN')}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">

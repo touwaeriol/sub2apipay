@@ -13,6 +13,14 @@ export async function GET(request: NextRequest) {
     const env = getEnv();
     const [user, methodLimits] = await Promise.all([getUser(userId), queryMethodLimits(env.ENABLED_PAYMENT_TYPES)]);
 
+    // 收集 sublabel 覆盖（仅包含用户实际配置的项）
+    const sublabelOverrides: Record<string, string> = {};
+    if (env.PAYMENT_SUBLABEL_ALIPAY) sublabelOverrides.alipay = env.PAYMENT_SUBLABEL_ALIPAY;
+    if (env.PAYMENT_SUBLABEL_ALIPAY_DIRECT) sublabelOverrides.alipay_direct = env.PAYMENT_SUBLABEL_ALIPAY_DIRECT;
+    if (env.PAYMENT_SUBLABEL_WXPAY) sublabelOverrides.wxpay = env.PAYMENT_SUBLABEL_WXPAY;
+    if (env.PAYMENT_SUBLABEL_WXPAY_DIRECT) sublabelOverrides.wxpay_direct = env.PAYMENT_SUBLABEL_WXPAY_DIRECT;
+    if (env.PAYMENT_SUBLABEL_STRIPE) sublabelOverrides.stripe = env.PAYMENT_SUBLABEL_STRIPE;
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -30,6 +38,7 @@ export async function GET(request: NextRequest) {
           env.ENABLED_PAYMENT_TYPES.includes('stripe') && env.STRIPE_PUBLISHABLE_KEY
             ? env.STRIPE_PUBLISHABLE_KEY
             : null,
+        sublabelOverrides: Object.keys(sublabelOverrides).length > 0 ? sublabelOverrides : null,
       },
     });
   } catch (error) {

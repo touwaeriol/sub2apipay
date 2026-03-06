@@ -9,6 +9,7 @@ import {
   getPaymentIconSrc,
   getPaymentChannelLabel,
 } from '@/lib/pay-utils';
+import { TERMINAL_STATUSES } from '@/lib/constants';
 
 interface PaymentQRCodeProps {
   orderId: string;
@@ -36,7 +37,6 @@ const TEXT_BACK = '\u8FD4\u56DE';
 const TEXT_CANCEL_ORDER = '\u53D6\u6D88\u8BA2\u5355';
 const TEXT_H5_HINT =
   '\u652F\u4ED8\u5B8C\u6210\u540E\u8BF7\u8FD4\u56DE\u6B64\u9875\u9762\uFF0C\u7CFB\u7EDF\u5C06\u81EA\u52A8\u786E\u8BA4';
-const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED', 'REFUND_FAILED']);
 
 export default function PaymentQRCode({
   orderId,
@@ -62,6 +62,7 @@ export default function PaymentQRCode({
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [imageLoading, setImageLoading] = useState(false);
   const [cancelBlocked, setCancelBlocked] = useState(false);
+  const [redirected, setRedirected] = useState(false);
 
   // Stripe Payment Element state
   const [stripeLoaded, setStripeLoaded] = useState(false);
@@ -79,6 +80,24 @@ export default function PaymentQRCode({
 
   // alipay_direct 使用电脑网站支付，payUrl 是跳转链接不是二维码内容
   const isRedirect = isRedirectPayment(paymentType);
+
+  // 移动端可用的跳转链接：优先 payUrl，其次尝试 qrCode（微信 weixin:// 协议可直接唤起）
+  const mobileRedirectUrl = payUrl || (qrCode && /^(https?:|weixin:)/i.test(qrCode) ? qrCode : null);
+
+  // 自动跳转：redirect 支付方式 或 移动端 H5
+  const shouldAutoRedirect = !expired && !isStripeType(paymentType) && ((isRedirect && payUrl) || (isMobile && mobileRedirectUrl));
+
+  useEffect(() => {
+    if (!shouldAutoRedirect || redirected) return;
+    const url = isRedirect ? payUrl! : mobileRedirectUrl!;
+    setRedirected(true);
+    // embedded iframe 不能 location.href 跳转，用 window.open
+    if (isEmbedded) {
+      window.open(url, '_blank');
+    } else {
+      window.location.href = url;
+    }
+  }, [shouldAutoRedirect, redirected, isRedirect, payUrl, mobileRedirectUrl, isEmbedded]);
 
   const qrPayload = useMemo(() => {
     if (isRedirect && !qrCode) return '';
@@ -448,31 +467,22 @@ export default function PaymentQRCode({
                 </>
               )}
             </div>
-          ) : isMobile && payUrl ? (
+          ) : shouldAutoRedirect ? (
             <>
+              <div className="flex items-center justify-center py-6">
+                <div className={`h-8 w-8 animate-spin rounded-full border-2 border-t-transparent`} style={{ borderColor: meta.color, borderTopColor: 'transparent' }} />
+                <span className={['ml-3 text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
+                  正在跳转到{channelLabel}...
+                </span>
+              </div>
               <a
-                href={payUrl}
+                href={isRedirect ? payUrl! : mobileRedirectUrl!}
                 target={isEmbedded ? '_blank' : '_self'}
-                rel="noopener noreferrer"
-                className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium text-white shadow-md ${iconBgClass}`}
-              >
-                <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />
-                {`打开${channelLabel}支付`}
-              </a>
-              <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
-                {TEXT_H5_HINT}
-              </p>
-            </>
-          ) : isRedirect && payUrl ? (
-            <>
-              <a
-                href={payUrl}
-                target="_blank"
                 rel="noopener noreferrer"
                 className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium text-white shadow-md ${meta.buttonClass}`}
               >
                 {iconSrc && <img src={iconSrc} alt={channelLabel} className="h-5 w-5 brightness-0 invert" />}
-                {`前往${channelLabel}收银台`}
+                {redirected ? `未跳转？点击前往${channelLabel}` : `前往${channelLabel}支付`}
               </a>
               <p className={['text-center text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>
                 {TEXT_H5_HINT}

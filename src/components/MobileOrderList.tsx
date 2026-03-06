@@ -6,6 +6,7 @@ import {
   formatStatus,
   formatCreatedAt,
   getStatusBadgeClass,
+  getPaymentDisplayInfo,
   type MyOrder,
   type OrderStatusFilter,
 } from '@/lib/pay-utils';
@@ -113,7 +114,10 @@ export default function MobileOrderList({
                 </span>
               </div>
               <div className={['mt-1 text-sm', isDark ? 'text-slate-300' : 'text-slate-600'].join(' ')}>
-                {order.paymentType}
+                {(() => {
+                  const { channel, provider } = getPaymentDisplayInfo(order.paymentType);
+                  return provider ? `${channel} · ${provider}` : channel;
+                })()}
               </div>
               <div className={['mt-0.5 text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
                 {formatCreatedAt(order.createdAt)}

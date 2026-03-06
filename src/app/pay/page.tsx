@@ -7,7 +7,7 @@ import PaymentQRCode from '@/components/PaymentQRCode';
 import OrderStatus from '@/components/OrderStatus';
 import PayPageLayout from '@/components/PayPageLayout';
 import MobileOrderList from '@/components/MobileOrderList';
-import { detectDeviceIsMobile, type UserInfo, type MyOrder } from '@/lib/pay-utils';
+import { detectDeviceIsMobile, applySublabelOverrides, type UserInfo, type MyOrder } from '@/lib/pay-utils';
 import type { MethodLimitInfo } from '@/components/PaymentForm';
 
 interface OrderResult {
@@ -111,6 +111,10 @@ function PayContent() {
             helpText: cfgData.config.helpText ?? null,
             stripePublishableKey: cfgData.config.stripePublishableKey ?? null,
           });
+          // 应用自定义 sublabel
+          if (cfgData.config.sublabelOverrides) {
+            applySublabelOverrides(cfgData.config.sublabelOverrides);
+          }
         }
       } else if (cfgRes.status === 404) {
         setUserNotFound(true);

@@ -89,6 +89,13 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
   PAY_HELP_IMAGE_URL: optionalTrimmedString,
   PAY_HELP_TEXT: optionalTrimmedString,
+
+  // ── 支付方式前端描述（sublabel）覆盖，不设置则使用默认值 ──
+  PAYMENT_SUBLABEL_ALIPAY: optionalTrimmedString,
+  PAYMENT_SUBLABEL_ALIPAY_DIRECT: optionalTrimmedString,
+  PAYMENT_SUBLABEL_WXPAY: optionalTrimmedString,
+  PAYMENT_SUBLABEL_WXPAY_DIRECT: optionalTrimmedString,
+  PAYMENT_SUBLABEL_STRIPE: optionalTrimmedString,
 });
 
 export type Env = z.infer<typeof envSchema>;
