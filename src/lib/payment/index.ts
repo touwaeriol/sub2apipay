@@ -69,3 +69,6 @@ export function initPaymentProviders(): void {
 
   initialized = true;
 }
+
+// 注入 lazy init：Registry 方法会自动调用 initPaymentProviders()
+paymentRegistry.setInitializer(initPaymentProviders);

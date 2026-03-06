@@ -23,6 +23,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({
     ...order,
     amount: Number(order.amount),
+    payAmount: order.payAmount ? Number(order.payAmount) : null,
+    feeRate: order.feeRate ? Number(order.feeRate) : null,
     refundAmount: order.refundAmount ? Number(order.refundAmount) : null,
   });
 }

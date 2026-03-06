@@ -16,8 +16,16 @@ export async function GET(request: NextRequest) {
   const rawPageSize = Number(searchParams.get('page_size') || '20');
   const pageSize = VALID_PAGE_SIZES.includes(rawPageSize) ? rawPageSize : 20;
 
+  // 单独处理认证，区分认证失败和其他错误
+  let user;
   try {
-    const user = await getCurrentUserByToken(token);
+    user = await getCurrentUserByToken(token);
+  } catch (error) {
+    console.error('Auth error in /api/orders/my:', error);
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  try {
     const where = { userId: user.id };
 
     const [orders, total, statusGroups] = await Promise.all([
@@ -76,6 +84,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Get my orders error:', error);
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: '获取订单失败' }, { status: 500 });
   }
 }

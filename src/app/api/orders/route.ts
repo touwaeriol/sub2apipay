@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createOrder, OrderError } from '@/lib/order/service';
+import { createOrder } from '@/lib/order/service';
 import { getEnv } from '@/lib/config';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { paymentRegistry } from '@/lib/payment';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
+import { handleApiError } from '@/lib/utils/api';
 
 const createOrderSchema = z.object({
   token: z.string().min(1),
@@ -17,7 +18,6 @@ const createOrderSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const env = getEnv();
-    initPaymentProviders();
     const body = await request.json();
     const parsed = createOrderSchema.safeParse(body);
 
@@ -66,10 +66,6 @@ export async function POST(request: NextRequest) {
     const { userName: _u, userBalance: _b, ...safeResult } = result;
     return NextResponse.json(safeResult);
   } catch (error) {
-    if (error instanceof OrderError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
-    }
-    console.error('Create order error:', error);
-    return NextResponse.json({ error: '创建订单失败，请稍后重试' }, { status: 500 });
+    return handleApiError(error, '创建订单失败，请稍后重试');
   }
 }

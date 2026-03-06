@@ -135,7 +135,7 @@ function PayContent() {
       }
 
       // 获取服务端支付配置
-      const cfgRes = await fetch(`/api/user?user_id=${meId}`);
+      const cfgRes = await fetch(`/api/user?user_id=${meId}&token=${encodeURIComponent(token)}`);
       if (cfgRes.ok) {
         const cfgData = await cfgRes.json();
         if (cfgData.config) {

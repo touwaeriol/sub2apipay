@@ -16,11 +16,38 @@ export async function GET(request: NextRequest) {
 
   const where: Prisma.OrderWhereInput = {};
   if (status && status in OrderStatus) where.status = status as OrderStatus;
-  if (userId) where.userId = Number(userId);
+
+  // userId 校验：忽略无效值（NaN）
+  if (userId) {
+    const parsedUserId = Number(userId);
+    if (Number.isFinite(parsedUserId)) {
+      where.userId = parsedUserId;
+    }
+  }
+
+  // 日期校验：忽略无效日期
   if (dateFrom || dateTo) {
-    where.createdAt = {};
-    if (dateFrom) where.createdAt.gte = new Date(dateFrom);
-    if (dateTo) where.createdAt.lte = new Date(dateTo);
+    const createdAt: Prisma.DateTimeFilter = {};
+    let hasValidDate = false;
+
+    if (dateFrom) {
+      const d = new Date(dateFrom);
+      if (!isNaN(d.getTime())) {
+        createdAt.gte = d;
+        hasValidDate = true;
+      }
+    }
+    if (dateTo) {
+      const d = new Date(dateTo);
+      if (!isNaN(d.getTime())) {
+        createdAt.lte = d;
+        hasValidDate = true;
+      }
+    }
+
+    if (hasValidDate) {
+      where.createdAt = createdAt;
+    }
   }
 
   const [orders, total] = await Promise.all([

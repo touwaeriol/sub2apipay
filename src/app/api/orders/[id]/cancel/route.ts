@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cancelOrder, OrderError } from '@/lib/order/service';
+import { cancelOrder } from '@/lib/order/service';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
+import { handleApiError } from '@/lib/utils/api';
 
 const cancelSchema = z.object({
   token: z.string().min(1),
@@ -31,10 +32,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof OrderError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
-    }
-    console.error('Cancel order error:', error);
-    return NextResponse.json({ error: '取消订单失败' }, { status: 500 });
+    return handleApiError(error, '取消订单失败');
   }
 }

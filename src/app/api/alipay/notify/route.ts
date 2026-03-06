@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import { AlipayProvider } from '@/lib/alipay/provider';
+import { paymentRegistry } from '@/lib/payment';
+import type { PaymentType } from '@/lib/payment';
 import { getEnv } from '@/lib/config';
-
-const alipayProvider = new AlipayProvider();
+import { extractHeaders } from '@/lib/utils/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,14 +13,15 @@ export async function POST(request: NextRequest) {
       return new Response('success', { headers: { 'Content-Type': 'text/plain' } });
     }
 
+    const provider = paymentRegistry.getProvider('alipay_direct' as PaymentType);
     const rawBody = await request.text();
-    const headers: Record<string, string> = {};
-    request.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
+    const headers = extractHeaders(request);
 
-    const notification = await alipayProvider.verifyNotification(rawBody, headers);
-    const success = await handlePaymentNotify(notification, alipayProvider.name);
+    const notification = await provider.verifyNotification(rawBody, headers);
+    if (!notification) {
+      return new Response('success', { headers: { 'Content-Type': 'text/plain' } });
+    }
+    const success = await handlePaymentNotify(notification, provider.name);
     return new Response(success ? 'success' : 'fail', {
       headers: { 'Content-Type': 'text/plain' },
     });
