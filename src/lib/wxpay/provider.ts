@@ -45,7 +45,9 @@ export class WxpayProvider implements PaymentProvider {
           payer_client_ip: request.clientIp,
         });
         return { tradeNo: request.orderId, payUrl: h5Url };
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (!msg.includes('NO_AUTH')) throw err;
         // H5 未开通，fallback 到 Native 扫码
       }
     }
