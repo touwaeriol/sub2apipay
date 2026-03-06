@@ -51,7 +51,7 @@ export function pageExecute(
 
   params.sign = generateSign(params, env.ALIPAY_PRIVATE_KEY);
 
-  const query = new URLSearchParams({ ...params, sign_type: 'RSA2' }).toString();
+  const query = new URLSearchParams(params).toString();
   return `${GATEWAY}?${query}`;
 }
 
@@ -72,7 +72,6 @@ export async function execute<T extends AlipayResponse>(
   };
 
   params.sign = generateSign(params, env.ALIPAY_PRIVATE_KEY);
-  params.sign_type = 'RSA2';
 
   const response = await fetch(GATEWAY, {
     method: 'POST',

@@ -14,9 +14,7 @@ function formatPublicKey(key: string): string {
 /** 生成 RSA2 签名 */
 export function generateSign(params: Record<string, string>, privateKey: string): string {
   const filtered = Object.entries(params)
-    .filter(
-      ([key, value]) => key !== 'sign' && key !== 'sign_type' && value !== '' && value !== undefined && value !== null,
-    )
+    .filter(([key, value]) => key !== 'sign' && value !== '' && value !== undefined && value !== null)
     .sort(([a], [b]) => a.localeCompare(b));
 
   const signStr = filtered.map(([key, value]) => `${key}=${value}`).join('&');
@@ -29,9 +27,7 @@ export function generateSign(params: Record<string, string>, privateKey: string)
 /** 用支付宝公钥验证签名 */
 export function verifySign(params: Record<string, string>, alipayPublicKey: string, sign: string): boolean {
   const filtered = Object.entries(params)
-    .filter(
-      ([key, value]) => key !== 'sign' && key !== 'sign_type' && value !== '' && value !== undefined && value !== null,
-    )
+    .filter(([key, value]) => key !== 'sign' && value !== '' && value !== undefined && value !== null)
     .sort(([a], [b]) => a.localeCompare(b));
 
   const signStr = filtered.map(([key, value]) => `${key}=${value}`).join('&');
