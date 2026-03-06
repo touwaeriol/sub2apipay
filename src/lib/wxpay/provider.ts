@@ -112,18 +112,18 @@ export class WxpayProvider implements PaymentProvider {
     }
 
     // 验证 serial 匹配我们配置的公钥 ID
-    if (env.WXPAY_PUBLIC_KEY_ID && serial !== env.WXPAY_PUBLIC_KEY_ID) {
+    if (serial !== env.WXPAY_PUBLIC_KEY_ID) {
       throw new Error(`Wxpay serial mismatch: expected ${env.WXPAY_PUBLIC_KEY_ID}, got ${serial}`);
-    }
-
-    const valid = await verifyNotifySign({ timestamp, nonce, body, serial, signature });
-    if (!valid) {
-      throw new Error('Wxpay notification signature verification failed');
     }
 
     const now = Math.floor(Date.now() / 1000);
     if (Math.abs(now - Number(timestamp)) > 300) {
       throw new Error('Wechatpay notification timestamp expired');
+    }
+
+    const valid = await verifyNotifySign({ timestamp, nonce, body, serial, signature });
+    if (!valid) {
+      throw new Error('Wxpay notification signature verification failed');
     }
 
     const payload: WxpayNotifyPayload = JSON.parse(body);

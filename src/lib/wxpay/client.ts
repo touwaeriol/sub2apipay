@@ -26,7 +26,10 @@ function getPayInstance(): WxPay {
   const env = assertWxpayEnv(getEnv());
 
   const privateKey = Buffer.from(env.WXPAY_PRIVATE_KEY);
-  const publicKey = env.WXPAY_PUBLIC_KEY ? Buffer.from(env.WXPAY_PUBLIC_KEY) : Buffer.alloc(0);
+  if (!env.WXPAY_PUBLIC_KEY) {
+    throw new Error('WXPAY_PUBLIC_KEY is required');
+  }
+  const publicKey = Buffer.from(env.WXPAY_PUBLIC_KEY);
 
   payInstance = new WxPay({
     appid: env.WXPAY_APP_ID,
@@ -45,7 +48,7 @@ function yuanToFen(yuan: number): number {
 
 async function request<T>(method: string, url: string, body?: Record<string, unknown>): Promise<T> {
   const pay = getPayInstance();
-  const nonce_str = Math.random().toString(36).substring(2, 15);
+  const nonce_str = crypto.randomBytes(16).toString('hex');
   const timestamp = Math.floor(Date.now() / 1000).toString();
 
   const signature = pay.getSignature(method, nonce_str, timestamp, url, body ? JSON.stringify(body) : '');
@@ -134,8 +137,17 @@ export async function createRefund(params: WxpayRefundParams): Promise<Record<st
 }
 
 export function decipherNotify<T>(ciphertext: string, associatedData: string, nonce: string): T {
-  const pay = getPayInstance();
-  return pay.decipher_gcm<T>(ciphertext, associatedData, nonce);
+  const env = assertWxpayEnv(getEnv());
+  const key = env.WXPAY_API_V3_KEY;
+  const ciphertextBuf = Buffer.from(ciphertext, 'base64');
+  // AES-GCM 最后 16 字节是 AuthTag
+  const authTag = ciphertextBuf.subarray(ciphertextBuf.length - 16);
+  const data = ciphertextBuf.subarray(0, ciphertextBuf.length - 16);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce);
+  decipher.setAuthTag(authTag);
+  decipher.setAAD(Buffer.from(associatedData));
+  const decoded = Buffer.concat([decipher.update(data), decipher.final()]);
+  return JSON.parse(decoded.toString('utf-8')) as T;
 }
 
 export async function verifyNotifySign(params: {

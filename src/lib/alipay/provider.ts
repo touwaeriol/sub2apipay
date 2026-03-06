@@ -75,7 +75,7 @@ export class AlipayProvider implements PaymentProvider {
     return {
       tradeNo: result.trade_no || tradeNo,
       status,
-      amount: parseFloat(result.total_amount || '0'),
+      amount: Math.round(parseFloat(result.total_amount || '0') * 100) / 100,
       paidAt: result.send_pay_date ? new Date(result.send_pay_date) : undefined,
     };
   }
@@ -90,15 +90,25 @@ export class AlipayProvider implements PaymentProvider {
       params[key] = value;
     }
 
+    // sign_type 过滤：仅接受 RSA2
+    if (params.sign_type && params.sign_type !== 'RSA2') {
+      throw new Error('Unsupported sign_type, only RSA2 is accepted');
+    }
+
     const sign = params.sign || '';
     if (!env.ALIPAY_PUBLIC_KEY || !verifySign(params, env.ALIPAY_PUBLIC_KEY, sign)) {
       throw new Error('Alipay notification signature verification failed');
     }
 
+    // app_id 校验
+    if (params.app_id !== env.ALIPAY_APP_ID) {
+      throw new Error('Alipay notification app_id mismatch');
+    }
+
     return {
       tradeNo: params.trade_no || '',
       orderId: params.out_trade_no || '',
-      amount: parseFloat(params.total_amount || '0'),
+      amount: Math.round(parseFloat(params.total_amount || '0') * 100) / 100,
       status:
         params.trade_status === 'TRADE_SUCCESS' || params.trade_status === 'TRADE_FINISHED' ? 'success' : 'failed',
       rawData: params,
@@ -110,6 +120,7 @@ export class AlipayProvider implements PaymentProvider {
       out_trade_no: request.orderId,
       refund_amount: request.amount.toFixed(2),
       refund_reason: request.reason || '',
+      out_request_no: request.orderId + '-refund',
     });
 
     return {

@@ -49,11 +49,12 @@ export function initPaymentProviders(): void {
       !env.WXPAY_PRIVATE_KEY ||
       !env.WXPAY_API_V3_KEY ||
       !env.WXPAY_PUBLIC_KEY ||
+      !env.WXPAY_PUBLIC_KEY_ID ||
       !env.WXPAY_CERT_SERIAL ||
       !env.WXPAY_NOTIFY_URL
     ) {
       throw new Error(
-        'PAYMENT_PROVIDERS includes wxpay but required env vars are missing: WXPAY_APP_ID, WXPAY_MCH_ID, WXPAY_PRIVATE_KEY, WXPAY_API_V3_KEY, WXPAY_PUBLIC_KEY, WXPAY_CERT_SERIAL, WXPAY_NOTIFY_URL',
+        'PAYMENT_PROVIDERS includes wxpay but required env vars are missing: WXPAY_APP_ID, WXPAY_MCH_ID, WXPAY_PRIVATE_KEY, WXPAY_API_V3_KEY, WXPAY_PUBLIC_KEY, WXPAY_PUBLIC_KEY_ID, WXPAY_CERT_SERIAL, WXPAY_NOTIFY_URL',
       );
     }
     paymentRegistry.register(new WxpayProvider());

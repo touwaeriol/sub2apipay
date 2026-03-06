@@ -10,7 +10,7 @@ function getCommonParams(appId: string): Record<string, string> {
     format: 'JSON',
     charset: 'utf-8',
     sign_type: 'RSA2',
-    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    timestamp: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace('T', ' '),
     version: '1.0',
   };
 }
