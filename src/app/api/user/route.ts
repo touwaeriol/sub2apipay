@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/sub2api/client';
+import { getUser, getCurrentUserByToken } from '@/lib/sub2api/client';
 import { getEnv } from '@/lib/config';
 import { queryMethodLimits } from '@/lib/order/limits';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
@@ -11,7 +11,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '无效的用户 ID' }, { status: 400 });
   }
 
+  const token = request.nextUrl.searchParams.get('token')?.trim();
+  if (!token) {
+    return NextResponse.json({ error: '缺少 token 参数' }, { status: 401 });
+  }
+
   try {
+    // 验证 token 并确保请求的 user_id 与 token 对应的用户匹配
+    let tokenUser;
+    try {
+      tokenUser = await getCurrentUserByToken(token);
+    } catch {
+      return NextResponse.json({ error: '无效的 token' }, { status: 401 });
+    }
+
+    if (tokenUser.id !== userId) {
+      return NextResponse.json({ error: '无权访问该用户信息' }, { status: 403 });
+    }
+
     const env = getEnv();
     initPaymentProviders();
     const enabledTypes = paymentRegistry.getSupportedTypes();

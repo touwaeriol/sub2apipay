@@ -30,7 +30,23 @@ async function isSub2ApiAdmin(token: string): Promise<boolean> {
 }
 
 export async function verifyAdminToken(request: NextRequest): Promise<boolean> {
-  const token = request.nextUrl.searchParams.get('token');
+  // 优先从 Authorization: Bearer <token> header 获取
+  let token: string | null = null;
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  }
+
+  // Fallback: query parameter（向后兼容，已弃用）
+  if (!token) {
+    token = request.nextUrl.searchParams.get('token');
+    if (token) {
+      console.warn(
+        '[DEPRECATED] Admin token passed via query parameter. Use "Authorization: Bearer <token>" header instead.',
+      );
+    }
+  }
+
   if (!token) return false;
 
   // 1. 本地 admin token

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
-import { processRefund, OrderError } from '@/lib/order/service';
+import { processRefund } from '@/lib/order/service';
+import { handleApiError } from '@/lib/utils/api';
 
 const refundSchema = z.object({
   order_id: z.string().min(1),
@@ -28,10 +29,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    if (error instanceof OrderError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
-    }
-    console.error('Refund error:', error);
-    return NextResponse.json({ error: '退款失败' }, { status: 500 });
+    return handleApiError(error, '退款失败');
   }
 }

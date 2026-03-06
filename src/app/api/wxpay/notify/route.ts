@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import { WxpayProvider } from '@/lib/wxpay';
+import { paymentRegistry } from '@/lib/payment';
+import type { PaymentType } from '@/lib/payment';
 import { getEnv } from '@/lib/config';
-
-const wxpayProvider = new WxpayProvider();
+import { extractHeaders } from '@/lib/utils/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,17 +13,15 @@ export async function POST(request: NextRequest) {
       return Response.json({ code: 'SUCCESS', message: '成功' });
     }
 
+    const provider = paymentRegistry.getProvider('wxpay_direct' as PaymentType);
     const rawBody = await request.text();
-    const headers: Record<string, string> = {};
-    request.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
+    const headers = extractHeaders(request);
 
-    const notification = await wxpayProvider.verifyNotification(rawBody, headers);
+    const notification = await provider.verifyNotification(rawBody, headers);
     if (!notification) {
       return Response.json({ code: 'SUCCESS', message: '成功' });
     }
-    const success = await handlePaymentNotify(notification, wxpayProvider.name);
+    const success = await handlePaymentNotify(notification, provider.name);
     return Response.json(
       success ? { code: 'SUCCESS', message: '成功' } : { code: 'FAIL', message: '处理失败' },
       { status: success ? 200 : 500 },
