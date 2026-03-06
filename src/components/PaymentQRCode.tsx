@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   isStripeType,
-  isRedirectPayment,
   getPaymentMeta,
   getPaymentIconSrc,
   getPaymentChannelLabel,
@@ -78,32 +77,22 @@ export default function PaymentQRCode({
   const [popupBlocked, setPopupBlocked] = useState(false);
   const paymentMethodListenerAdded = useRef(false);
 
-  // alipay_direct 使用电脑网站支付，payUrl 是跳转链接不是二维码内容
-  const isRedirect = isRedirectPayment(paymentType);
-
-  // 移动端可用的跳转链接：优先 payUrl，其次尝试 qrCode（微信 weixin:// 协议可直接唤起）
-  const mobileRedirectUrl = payUrl || (qrCode && /^(https?:|weixin:)/i.test(qrCode) ? qrCode : null);
-
-  // 自动跳转：redirect 支付方式 或 移动端 H5
-  const shouldAutoRedirect = !expired && !isStripeType(paymentType) && ((isRedirect && payUrl) || (isMobile && mobileRedirectUrl));
+  // 有 payUrl 就直接跳转，不需要确认
+  const shouldAutoRedirect = !expired && !isStripeType(paymentType) && !!payUrl;
 
   useEffect(() => {
     if (!shouldAutoRedirect || redirected) return;
-    const url = isRedirect ? payUrl! : mobileRedirectUrl!;
     setRedirected(true);
-    // embedded iframe 不能 location.href 跳转，用 window.open
     if (isEmbedded) {
-      window.open(url, '_blank');
+      window.open(payUrl!, '_blank');
     } else {
-      window.location.href = url;
+      window.location.href = payUrl!;
     }
-  }, [shouldAutoRedirect, redirected, isRedirect, payUrl, mobileRedirectUrl, isEmbedded]);
+  }, [shouldAutoRedirect, redirected, payUrl, isEmbedded]);
 
   const qrPayload = useMemo(() => {
-    if (isRedirect && !qrCode) return '';
-    const value = (qrCode || payUrl || '').trim();
-    return value;
-  }, [qrCode, payUrl, isRedirect]);
+    return (qrCode || '').trim();
+  }, [qrCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -476,7 +465,7 @@ export default function PaymentQRCode({
                 </span>
               </div>
               <a
-                href={isRedirect ? payUrl! : mobileRedirectUrl!}
+                href={payUrl!}
                 target={isEmbedded ? '_blank' : '_self'}
                 rel="noopener noreferrer"
                 className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium text-white shadow-md ${meta.buttonClass}`}
@@ -511,18 +500,7 @@ export default function PaymentQRCode({
                 </div>
               )}
 
-              {!qrDataUrl && payUrl && (
-                <a
-                  href={payUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg bg-blue-600 px-8 py-3 font-medium text-white hover:bg-blue-700"
-                >
-                  {TEXT_GO_PAY}
-                </a>
-              )}
-
-              {!qrDataUrl && !payUrl && (
+              {!qrDataUrl && (
                 <div className="text-center">
                   <div
                     className={[
