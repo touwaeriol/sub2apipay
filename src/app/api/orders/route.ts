@@ -6,7 +6,7 @@ import { getEnv } from '@/lib/config';
 const createOrderSchema = z.object({
   user_id: z.number().int().positive(),
   amount: z.number().positive(),
-  payment_type: z.enum(['alipay', 'wxpay', 'stripe']),
+  payment_type: z.string().min(1),
   src_host: z.string().max(253).optional(),
   src_url: z.string().max(2048).optional(),
 });

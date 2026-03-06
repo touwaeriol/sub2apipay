@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PAYMENT_TYPE_META } from '@/lib/pay-utils';
+import { PAYMENT_TYPE_META, getPaymentIconType } from '@/lib/pay-utils';
 
 export interface MethodLimitInfo {
   available: boolean;
@@ -99,14 +99,15 @@ export default function PaymentForm({
   };
 
   const renderPaymentIcon = (type: string) => {
-    if (type === 'alipay') {
+    const iconType = getPaymentIconType(type);
+    if (iconType === 'alipay') {
       return (
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#00AEEF] text-xl font-bold leading-none text-white">
           支
         </span>
       );
     }
-    if (type === 'wxpay') {
+    if (iconType === 'wxpay') {
       return (
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2BB741] text-white">
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
@@ -116,7 +117,7 @@ export default function PaymentForm({
         </span>
       );
     }
-    if (type === 'stripe') {
+    if (iconType === 'stripe') {
       return (
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#635bff] text-white">
           <svg
@@ -326,7 +327,7 @@ export default function PaymentForm({
         disabled={!isValid || loading}
         className={`w-full rounded-lg py-3 text-center font-medium text-white transition-colors ${
           isValid && !loading
-            ? effectivePaymentType === 'stripe'
+            ? effectivePaymentType.startsWith('stripe')
               ? 'bg-[#635bff] hover:bg-[#5851db] active:bg-[#4b44c7]'
               : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
             : dark

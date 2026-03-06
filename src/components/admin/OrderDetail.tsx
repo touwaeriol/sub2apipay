@@ -1,5 +1,7 @@
 'use client';
 
+import { getPaymentTypeLabel } from '@/lib/pay-utils';
+
 interface AuditLog {
   id: string;
   action: string;
@@ -53,7 +55,7 @@ export default function OrderDetail({ order, onClose, dark }: OrderDetailProps) 
     { label: 'Payment OK', value: order.paymentSuccess ? 'yes' : 'no' },
     { label: 'Recharge OK', value: order.rechargeSuccess ? 'yes' : 'no' },
     { label: 'Recharge Status', value: order.rechargeStatus || '-' },
-    { label: '支付方式', value: order.paymentType === 'alipay' ? '支付宝' : '微信支付' },
+    { label: '支付方式', value: getPaymentTypeLabel(order.paymentType) },
     { label: '充值码', value: order.rechargeCode },
     { label: '支付单号', value: order.paymentTradeNo || '-' },
     { label: '客户端IP', value: order.clientIp || '-' },

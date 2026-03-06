@@ -5,7 +5,7 @@ import type { EasyPayCreateResponse, EasyPayQueryResponse, EasyPayRefundResponse
 export interface CreatePaymentOptions {
   outTradeNo: string;
   amount: string;
-  paymentType: 'alipay' | 'wxpay';
+  paymentType: string;
   clientIp: string;
   productName: string;
 }
@@ -20,7 +20,7 @@ function normalizeCidList(cid?: string): string | undefined {
   return normalized || undefined;
 }
 
-function resolveCid(paymentType: 'alipay' | 'wxpay'): string | undefined {
+function resolveCid(paymentType: string): string | undefined {
   const env = getEnv();
   if (paymentType === 'alipay') {
     return normalizeCidList(env.EASY_PAY_CID_ALIPAY) || normalizeCidList(env.EASY_PAY_CID);

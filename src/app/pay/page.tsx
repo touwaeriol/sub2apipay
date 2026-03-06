@@ -15,7 +15,7 @@ interface OrderResult {
   amount: number;
   payAmount?: number;
   status: string;
-  paymentType: 'alipay' | 'wxpay' | 'stripe';
+  paymentType: string;
   payUrl?: string | null;
   qrCode?: string | null;
   clientSecret?: string | null;

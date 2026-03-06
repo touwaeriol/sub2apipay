@@ -14,11 +14,11 @@ import { getEnv } from '@/lib/config';
 import type { AlipayTradeQueryResponse, AlipayTradeRefundResponse, AlipayTradeCloseResponse } from './types';
 
 export class AlipayProvider implements PaymentProvider {
-  readonly name = 'alipay';
+  readonly name = 'alipay-direct';
   readonly providerKey = 'alipay';
-  readonly supportedTypes: PaymentType[] = ['alipay'];
+  readonly supportedTypes: PaymentType[] = ['alipay_direct'];
   readonly defaultLimits = {
-    alipay: { singleMax: 1000, dailyMax: 10000 },
+    alipay_direct: { singleMax: 1000, dailyMax: 10000 },
   };
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {

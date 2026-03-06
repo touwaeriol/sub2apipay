@@ -1,5 +1,7 @@
 'use client';
 
+import { getPaymentTypeLabel } from '@/lib/pay-utils';
+
 interface Order {
   id: string;
   userId: number;
@@ -92,15 +94,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
                     {statusInfo.label}
                   </span>
                 </td>
-                <td className={tdMuted}>
-                  {order.paymentType === 'alipay'
-                    ? '支付宝'
-                    : order.paymentType === 'wechat'
-                      ? '微信支付'
-                      : order.paymentType === 'stripe'
-                        ? 'Stripe'
-                        : order.paymentType}
-                </td>
+                <td className={tdMuted}>{getPaymentTypeLabel(order.paymentType)}</td>
                 <td className={tdMuted}>{order.srcHost || '-'}</td>
                 <td className={tdMuted}>{new Date(order.createdAt).toLocaleString('zh-CN')}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">

@@ -1,5 +1,16 @@
 /** Unified payment method types across all providers */
-export type PaymentType = 'alipay' | 'wxpay' | 'stripe';
+export type PaymentType = string;
+
+/**
+ * 从复合 key 中提取基础支付方式（如 'alipay_direct' → 'alipay'）
+ * 用于传给第三方 API 时映射回标准名称
+ */
+export function getBasePaymentType(type: string): string {
+  if (type.startsWith('alipay')) return 'alipay';
+  if (type.startsWith('wxpay')) return 'wxpay';
+  if (type.startsWith('stripe')) return 'stripe';
+  return type;
+}
 
 /** Request to create a payment with any provider */
 export interface CreatePaymentRequest {

@@ -36,7 +36,7 @@ export function initPaymentProviders(): void {
     if (!env.ALIPAY_APP_ID || !env.ALIPAY_PRIVATE_KEY) {
       throw new Error('PAYMENT_PROVIDERS 含 alipay，但缺少 ALIPAY_APP_ID 或 ALIPAY_PRIVATE_KEY');
     }
-    paymentRegistry.register(new AlipayProvider());
+    paymentRegistry.register(new AlipayProvider()); // 注册 alipay_direct
   }
 
   if (providers.includes('stripe')) {

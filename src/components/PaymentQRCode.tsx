@@ -10,7 +10,7 @@ interface PaymentQRCodeProps {
   qrCode?: string | null;
   clientSecret?: string | null;
   stripePublishableKey?: string | null;
-  paymentType?: 'alipay' | 'wxpay' | 'stripe';
+  paymentType?: string;
   amount: number;
   payAmount?: number;
   expiresAt: string;
@@ -110,7 +110,7 @@ export default function PaymentQRCode({
   }, [qrPayload]);
 
   // Initialize Stripe Payment Element
-  const isStripe = paymentType === 'stripe';
+  const isStripe = paymentType?.startsWith('stripe');
 
   useEffect(() => {
     if (!isStripe || !clientSecret || !stripePublishableKey) return;
@@ -313,7 +313,7 @@ export default function PaymentQRCode({
     }
   };
 
-  const isWx = paymentType === 'wxpay';
+  const isWx = paymentType?.startsWith('wxpay');
   const iconSrc = isStripe ? '' : isWx ? '/icons/wxpay.svg' : '/icons/alipay.svg';
   const channelLabel = isStripe ? 'Stripe' : isWx ? '\u5FAE\u4FE1' : '\u652F\u4ED8\u5B9D';
   const iconBgClass = isStripe ? 'bg-[#635bff]' : isWx ? 'bg-[#07C160]' : 'bg-[#1677FF]';

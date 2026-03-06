@@ -1,5 +1,7 @@
 'use client';
 
+import { getPaymentTypeLabel } from '@/lib/pay-utils';
+
 interface PaymentMethod {
   paymentType: string;
   amount: number;
@@ -13,8 +15,10 @@ interface PaymentMethodChartProps {
 }
 
 const TYPE_CONFIG: Record<string, { label: string; light: string; dark: string }> = {
-  alipay: { label: '支付宝', light: 'bg-blue-500', dark: 'bg-blue-400' },
-  wechat: { label: '微信支付', light: 'bg-green-500', dark: 'bg-green-400' },
+  alipay: { label: '支付宝（易支付）', light: 'bg-cyan-500', dark: 'bg-cyan-400' },
+  alipay_direct: { label: '支付宝（官方）', light: 'bg-blue-500', dark: 'bg-blue-400' },
+  wxpay: { label: '微信支付（易支付）', light: 'bg-green-500', dark: 'bg-green-400' },
+  wxpay_direct: { label: '微信支付（官方）', light: 'bg-emerald-500', dark: 'bg-emerald-400' },
   stripe: { label: 'Stripe', light: 'bg-purple-500', dark: 'bg-purple-400' },
 };
 
@@ -48,7 +52,7 @@ export default function PaymentMethodChart({ data, dark }: PaymentMethodChartPro
       <div className="space-y-4">
         {data.map((method) => {
           const config = TYPE_CONFIG[method.paymentType] || {
-            label: method.paymentType,
+            label: getPaymentTypeLabel(method.paymentType),
             light: 'bg-gray-500',
             dark: 'bg-gray-400',
           };

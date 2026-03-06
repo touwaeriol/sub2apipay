@@ -75,18 +75,35 @@ export interface PaymentTypeMeta {
 export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
   alipay: {
     label: '支付宝',
-    sublabel: 'ALIPAY',
+    sublabel: '易支付',
     color: '#00AEEF',
     selectedBorder: 'border-cyan-400',
     selectedBg: 'bg-cyan-50',
     iconBg: 'bg-[#00AEEF]',
   },
+  alipay_direct: {
+    label: '支付宝',
+    sublabel: '官方直连',
+    color: '#1677FF',
+    selectedBorder: 'border-blue-500',
+    selectedBg: 'bg-blue-50',
+    iconBg: 'bg-[#1677FF]',
+  },
   wxpay: {
     label: '微信支付',
+    sublabel: '易支付',
     color: '#2BB741',
     selectedBorder: 'border-green-500',
     selectedBg: 'bg-green-50',
     iconBg: 'bg-[#2BB741]',
+  },
+  wxpay_direct: {
+    label: '微信支付',
+    sublabel: '官方直连',
+    color: '#07C160',
+    selectedBorder: 'border-green-600',
+    selectedBg: 'bg-green-50',
+    iconBg: 'bg-[#07C160]',
   },
   stripe: {
     label: 'Stripe',
@@ -97,6 +114,21 @@ export const PAYMENT_TYPE_META: Record<string, PaymentTypeMeta> = {
     iconBg: 'bg-[#635bff]',
   },
 };
+
+/** 获取支付方式的显示名称（如 '支付宝（官方直连）'） */
+export function getPaymentTypeLabel(type: string): string {
+  const meta = PAYMENT_TYPE_META[type];
+  if (!meta) return type;
+  return meta.sublabel ? `${meta.label}（${meta.sublabel}）` : meta.label;
+}
+
+/** 获取基础支付方式图标类型（alipay_direct → alipay） */
+export function getPaymentIconType(type: string): string {
+  if (type.startsWith('alipay')) return 'alipay';
+  if (type.startsWith('wxpay')) return 'wxpay';
+  if (type.startsWith('stripe')) return 'stripe';
+  return type;
+}
 
 export function getStatusBadgeClass(status: string, isDark: boolean): string {
   if (['COMPLETED', 'PAID'].includes(status)) {

@@ -67,6 +67,11 @@ const envSchema = z.object({
     .optional()
     .transform((v) => (v !== undefined ? Number(v) : undefined))
     .pipe(z.number().min(0).optional()),
+  MAX_DAILY_AMOUNT_ALIPAY_DIRECT: z
+    .string()
+    .optional()
+    .transform((v) => (v !== undefined ? Number(v) : undefined))
+    .pipe(z.number().min(0).optional()),
   MAX_DAILY_AMOUNT_WXPAY: z
     .string()
     .optional()

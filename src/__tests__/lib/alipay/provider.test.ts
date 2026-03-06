@@ -37,21 +37,21 @@ describe('AlipayProvider', () => {
   });
 
   describe('metadata', () => {
-    it('should have name "alipay"', () => {
-      expect(provider.name).toBe('alipay');
+    it('should have name "alipay-direct"', () => {
+      expect(provider.name).toBe('alipay-direct');
     });
 
     it('should have providerKey "alipay"', () => {
       expect(provider.providerKey).toBe('alipay');
     });
 
-    it('should support "alipay" payment type', () => {
-      expect(provider.supportedTypes).toEqual(['alipay']);
+    it('should support "alipay_direct" payment type', () => {
+      expect(provider.supportedTypes).toEqual(['alipay_direct']);
     });
 
     it('should have default limits', () => {
       expect(provider.defaultLimits).toEqual({
-        alipay: { singleMax: 1000, dailyMax: 10000 },
+        alipay_direct: { singleMax: 1000, dailyMax: 10000 },
       });
     });
   });
