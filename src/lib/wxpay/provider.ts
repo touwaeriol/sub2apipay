@@ -35,20 +35,22 @@ export class WxpayProvider implements PaymentProvider {
       throw new Error('WXPAY_NOTIFY_URL is required');
     }
 
-    if (request.isMobile) {
-      if (!request.clientIp) {
-        throw new Error('clientIp is required for H5 payment');
-      }
-      const h5Url = await createH5Order({
-        out_trade_no: request.orderId,
-        description: request.subject,
-        notify_url: notifyUrl,
-        amount: request.amount,
-        payer_client_ip: request.clientIp,
-      });
-      return { tradeNo: request.orderId, payUrl: h5Url };
-    }
+    // TODO: H5 支付需要在微信商户平台开通权限，开通后取消注释
+    // if (request.isMobile) {
+    //   if (!request.clientIp) {
+    //     throw new Error('clientIp is required for H5 payment');
+    //   }
+    //   const h5Url = await createH5Order({
+    //     out_trade_no: request.orderId,
+    //     description: request.subject,
+    //     notify_url: notifyUrl,
+    //     amount: request.amount,
+    //     payer_client_ip: request.clientIp,
+    //   });
+    //   return { tradeNo: request.orderId, payUrl: h5Url };
+    // }
 
+    // 统一使用 Native 扫码模式（PC + 移动端）
     const codeUrl = await createPcOrder({
       out_trade_no: request.orderId,
       description: request.subject,
