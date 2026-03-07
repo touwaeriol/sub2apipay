@@ -17,8 +17,8 @@ export class EasyPayProvider implements PaymentProvider {
   readonly providerKey = 'easypay';
   readonly supportedTypes: PaymentType[] = ['alipay', 'wxpay'];
   readonly defaultLimits = {
-    alipay: { singleMax: 1000, dailyMax: 10000 },
-    wxpay: { singleMax: 1000, dailyMax: 10000 },
+    alipay: { singleMax: 100000, dailyMax: 0 },
+    wxpay: { singleMax: 100000, dailyMax: 0 },
   };
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {

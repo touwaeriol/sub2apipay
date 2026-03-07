@@ -18,7 +18,7 @@ export class AlipayProvider implements PaymentProvider {
   readonly providerKey = 'alipay';
   readonly supportedTypes: PaymentType[] = ['alipay_direct'];
   readonly defaultLimits = {
-    alipay_direct: { singleMax: 1000, dailyMax: 10000 },
+    alipay_direct: { singleMax: 100000, dailyMax: 0 },
   };
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {

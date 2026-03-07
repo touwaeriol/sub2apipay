@@ -25,7 +25,7 @@ export class WxpayProvider implements PaymentProvider {
   readonly providerKey = 'wxpay';
   readonly supportedTypes: PaymentType[] = ['wxpay_direct'];
   readonly defaultLimits = {
-    wxpay_direct: { singleMax: 1000, dailyMax: 10000 },
+    wxpay_direct: { singleMax: 100000, dailyMax: 0 },
   };
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
