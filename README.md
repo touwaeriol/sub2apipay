@@ -133,7 +133,7 @@ ENABLED_PAYMENT_TYPES=alipay,wxpay
 | `EASY_PAY_PKEY`       | EasyPay 商户密钥                                              |
 | `EASY_PAY_API_BASE`   | EasyPay API 地址                                              |
 | `EASY_PAY_NOTIFY_URL` | 异步回调地址，填 `${NEXT_PUBLIC_APP_URL}/api/easy-pay/notify` |
-| `EASY_PAY_RETURN_URL` | 支付完成跳转地址，填 `${NEXT_PUBLIC_APP_URL}/pay`             |
+| `EASY_PAY_RETURN_URL` | 支付完成跳转地址，填 `${NEXT_PUBLIC_APP_URL}/pay/result`      |
 | `EASY_PAY_CID_ALIPAY` | 支付宝通道 ID（可选）                                         |
 | `EASY_PAY_CID_WXPAY`  | 微信支付通道 ID（可选）                                       |
 

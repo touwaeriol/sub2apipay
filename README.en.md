@@ -133,7 +133,7 @@ Any payment provider compatible with the **EasyPay protocol** can be used, such 
 | `EASY_PAY_PKEY`       | EasyPay merchant secret key                                      |
 | `EASY_PAY_API_BASE`   | EasyPay API base URL                                             |
 | `EASY_PAY_NOTIFY_URL` | Async callback URL: `${NEXT_PUBLIC_APP_URL}/api/easy-pay/notify` |
-| `EASY_PAY_RETURN_URL` | Redirect URL after payment: `${NEXT_PUBLIC_APP_URL}/pay`         |
+| `EASY_PAY_RETURN_URL` | Redirect URL after payment: `${NEXT_PUBLIC_APP_URL}/pay/result`  |
 | `EASY_PAY_CID_ALIPAY` | Alipay channel ID (optional)                                     |
 | `EASY_PAY_CID_WXPAY`  | WeChat Pay channel ID (optional)                                 |
 
