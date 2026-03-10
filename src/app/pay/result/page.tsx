@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { applyLocaleToSearchParams, pickLocaleText, resolveLocale, type Locale } from '@/lib/locale';
 import type { PublicOrderStatusSnapshot } from '@/lib/order/status';
+import { buildOrderStatusUrl } from '@/lib/order/status-url';
 
 type WindowWithAlipayBridge = Window & {
   AlipayJSBridge?: {
@@ -52,15 +53,6 @@ function closeCurrentWindow() {
     document.removeEventListener('AlipayJSBridgeReady', handleBridgeReady);
     window.close();
   }, 250);
-}
-
-function buildOrderStatusUrl(orderId: string, accessToken?: string | null): string {
-  const query = new URLSearchParams();
-  if (accessToken) {
-    query.set('access_token', accessToken);
-  }
-  const suffix = query.toString();
-  return suffix ? `/api/orders/${orderId}?${suffix}` : `/api/orders/${orderId}`;
 }
 
 function getStatusConfig(order: PublicOrderStatusSnapshot | null, locale: Locale, hasAccessToken: boolean) {
@@ -142,7 +134,7 @@ function ResultContent() {
   }, [isPopup]);
 
   useEffect(() => {
-    if (!outTradeNo || !accessToken) {
+    if (!outTradeNo || !accessToken || accessToken.length < 10) {
       setLoading(false);
       return;
     }

@@ -10,6 +10,7 @@ import {
   getPaymentIconSrc,
   getPaymentChannelLabel,
 } from '@/lib/pay-utils';
+import { buildOrderStatusUrl } from '@/lib/order/status-url';
 import { TERMINAL_STATUSES } from '@/lib/constants';
 
 interface PaymentQRCodeProps {
@@ -34,15 +35,6 @@ interface PaymentQRCodeProps {
 
 function isVisibleOrderOutcome(data: PublicOrderStatusSnapshot): boolean {
   return data.paymentSuccess || TERMINAL_STATUSES.has(data.status);
-}
-
-function buildOrderStatusUrl(orderId: string, statusAccessToken?: string): string {
-  const query = new URLSearchParams();
-  if (statusAccessToken) {
-    query.set('access_token', statusAccessToken);
-  }
-  const suffix = query.toString();
-  return suffix ? `/api/orders/${orderId}?${suffix}` : `/api/orders/${orderId}`;
 }
 
 export default function PaymentQRCode({

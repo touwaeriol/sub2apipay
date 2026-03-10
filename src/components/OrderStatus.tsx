@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Locale } from '@/lib/locale';
 import type { PublicOrderStatusSnapshot } from '@/lib/order/status';
+import { buildOrderStatusUrl } from '@/lib/order/status-url';
 
 interface OrderStatusProps {
   orderId: string;
@@ -13,15 +14,6 @@ interface OrderStatusProps {
   onStateChange?: (order: PublicOrderStatusSnapshot) => void;
   dark?: boolean;
   locale?: Locale;
-}
-
-function buildOrderStatusUrl(orderId: string, statusAccessToken?: string): string {
-  const query = new URLSearchParams();
-  if (statusAccessToken) {
-    query.set('access_token', statusAccessToken);
-  }
-  const suffix = query.toString();
-  return suffix ? `/api/orders/${orderId}?${suffix}` : `/api/orders/${orderId}`;
 }
 
 function getStatusConfig(order: PublicOrderStatusSnapshot, locale: Locale) {
@@ -84,6 +76,8 @@ export default function OrderStatus({
   locale = 'zh',
 }: OrderStatusProps) {
   const [currentOrder, setCurrentOrder] = useState(order);
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
 
   useEffect(() => {
     setCurrentOrder(order);
@@ -103,7 +97,7 @@ export default function OrderStatus({
         const nextOrder = (await response.json()) as PublicOrderStatusSnapshot;
         if (cancelled) return;
         setCurrentOrder(nextOrder);
-        onStateChange?.(nextOrder);
+        onStateChangeRef.current?.(nextOrder);
       } catch {
       }
     };
@@ -117,7 +111,7 @@ export default function OrderStatus({
       clearInterval(timer);
       clearTimeout(timeout);
     };
-  }, [orderId, currentOrder.paymentSuccess, currentOrder.rechargeSuccess, onStateChange, statusAccessToken]);
+  }, [orderId, currentOrder.paymentSuccess, currentOrder.rechargeSuccess, statusAccessToken]);
 
   const config = getStatusConfig(currentOrder, locale);
   const doneLabel = locale === 'en' ? 'Done' : '完成';
