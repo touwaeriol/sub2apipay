@@ -9,6 +9,7 @@ import PayPageLayout from '@/components/PayPageLayout';
 import MobileOrderList from '@/components/MobileOrderList';
 import { resolveLocale, pickLocaleText, applyLocaleToSearchParams } from '@/lib/locale';
 import { detectDeviceIsMobile, applySublabelOverrides, type UserInfo, type MyOrder } from '@/lib/pay-utils';
+import type { PublicOrderStatusSnapshot } from '@/lib/order/status';
 import type { MethodLimitInfo } from '@/components/PaymentForm';
 
 interface OrderResult {
@@ -21,6 +22,7 @@ interface OrderResult {
   qrCode?: string | null;
   clientSecret?: string | null;
   expiresAt: string;
+  statusAccessToken: string;
 }
 
 interface AppConfig {
@@ -51,7 +53,7 @@ function PayContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
-  const [finalStatus, setFinalStatus] = useState('');
+  const [finalOrderState, setFinalOrderState] = useState<PublicOrderStatusSnapshot | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [resolvedUserId, setResolvedUserId] = useState<number | null>(null);
   const [myOrders, setMyOrders] = useState<MyOrder[]>([]);
@@ -184,16 +186,16 @@ function PayContent() {
   }, [token, locale]);
 
   useEffect(() => {
-    if (step !== 'result' || finalStatus !== 'COMPLETED') return;
+    if (step !== 'result' || finalOrderState?.status !== 'COMPLETED') return;
     loadUserAndOrders();
     const timer = setTimeout(() => {
       setStep('form');
       setOrderResult(null);
-      setFinalStatus('');
+      setFinalOrderState(null);
       setError('');
     }, 2200);
     return () => clearTimeout(timer);
-  }, [step, finalStatus]);
+  }, [step, finalOrderState]);
 
   if (!hasToken) {
     return (
@@ -292,6 +294,7 @@ function PayContent() {
         qrCode: data.qrCode,
         clientSecret: data.clientSecret,
         expiresAt: data.expiresAt,
+        statusAccessToken: data.statusAccessToken,
       });
 
       setStep('paying');
@@ -302,8 +305,8 @@ function PayContent() {
     }
   };
 
-  const handleStatusChange = (status: string) => {
-    setFinalStatus(status);
+  const handleStatusChange = (order: PublicOrderStatusSnapshot) => {
+    setFinalOrderState(order);
     setStep('result');
     if (isMobile) {
       setActiveMobileTab('orders');
@@ -313,7 +316,7 @@ function PayContent() {
   const handleBack = () => {
     setStep('form');
     setOrderResult(null);
-    setFinalStatus('');
+    setFinalOrderState(null);
     setError('');
   };
 
@@ -538,6 +541,7 @@ function PayContent() {
           amount={orderResult.amount}
           payAmount={orderResult.payAmount}
           expiresAt={orderResult.expiresAt}
+          statusAccessToken={orderResult.statusAccessToken}
           onStatusChange={handleStatusChange}
           onBack={handleBack}
           dark={isDark}
@@ -547,7 +551,18 @@ function PayContent() {
         />
       )}
 
-      {step === 'result' && <OrderStatus status={finalStatus} onBack={handleBack} dark={isDark} locale={locale} />}
+
+{step === 'result' && orderResult && finalOrderState && (
+  <OrderStatus
+    orderId={orderResult.orderId}
+    order={finalOrderState}
+    statusAccessToken={orderResult.statusAccessToken}
+    onStateChange={setFinalOrderState}
+    onBack={handleBack}
+    dark={isDark}
+    locale={locale}
+  />
+)}
 
       {helpImageOpen && helpImageUrl && (
         <div

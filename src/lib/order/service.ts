@@ -10,6 +10,8 @@ import { getUser, createAndRedeem, subtractBalance, addBalance } from '@/lib/sub
 import { Prisma } from '@prisma/client';
 import { deriveOrderState, isRefundStatus } from './status';
 import { pickLocaleText, type Locale } from '@/lib/locale';
+import { getBizDayStartUTC } from '@/lib/time/biz-day';
+import { buildOrderResultUrl, createOrderStatusAccessToken } from '@/lib/order/status-access';
 
 const MAX_PENDING_ORDERS = 3;
 
@@ -41,11 +43,13 @@ export interface CreateOrderResult {
   qrCode?: string | null;
   clientSecret?: string | null;
   expiresAt: Date;
+  statusAccessToken: string;
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   const env = getEnv();
   const locale = input.locale ?? 'zh';
+  const todayStart = getBizDayStartUTC();
 
   const user = await getUser(input.userId);
   if (user.status !== 'active') {
@@ -65,8 +69,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   // 每日累计充值限额校验（0 = 不限制）
   if (env.MAX_DAILY_RECHARGE_AMOUNT > 0) {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
     const dailyAgg = await prisma.order.aggregate({
       where: {
         userId: input.userId,
@@ -93,8 +95,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   // 渠道每日全平台限额校验（0 = 不限）
   const methodDailyLimit = getMethodDailyLimit(input.paymentType);
   if (methodDailyLimit > 0) {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
     const methodAgg = await prisma.order.aggregate({
       where: {
         paymentType: input.paymentType,
@@ -161,12 +161,15 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     initPaymentProviders();
     const provider = paymentRegistry.getProvider(input.paymentType);
 
-    // 只有 easypay 从外部传入 notifyUrl/returnUrl，其他 provider 内部读取自己的环境变量
+    const statusAccessToken = createOrderStatusAccessToken(order.id);
+    const orderResultUrl = buildOrderResultUrl(env.NEXT_PUBLIC_APP_URL, order.id);
+
+    // 只有 easypay 从外部传入 notifyUrl，return_url 统一回到带访问令牌的结果页
     let notifyUrl: string | undefined;
-    let returnUrl: string | undefined;
+    let returnUrl: string | undefined = orderResultUrl;
     if (provider.providerKey === 'easypay') {
       notifyUrl = env.EASY_PAY_NOTIFY_URL || '';
-      returnUrl = env.EASY_PAY_RETURN_URL || '';
+      returnUrl = orderResultUrl;
     }
 
     const paymentResult = await provider.createPayment({
@@ -211,6 +214,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       qrCode: paymentResult.qrCode,
       clientSecret: paymentResult.clientSecret,
       expiresAt,
+      statusAccessToken,
     };
   } catch (error) {
     await prisma.order.delete({ where: { id: order.id } });

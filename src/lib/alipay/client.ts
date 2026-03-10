@@ -1,6 +1,7 @@
 import { getEnv } from '@/lib/config';
 import { generateSign } from './sign';
 import type { AlipayResponse } from './types';
+import { parseAlipayJsonResponse } from './codec';
 
 const GATEWAY = 'https://openapi.alipay.com/gateway.do';
 
@@ -32,7 +33,7 @@ function assertAlipayEnv(env: ReturnType<typeof getEnv>) {
  */
 export function pageExecute(
   bizContent: Record<string, unknown>,
-  options?: { notifyUrl?: string; returnUrl?: string; method?: string },
+  options?: { notifyUrl?: string; returnUrl?: string | null; method?: string },
 ): string {
   const env = assertAlipayEnv(getEnv());
 
@@ -45,7 +46,7 @@ export function pageExecute(
   if (options?.notifyUrl || env.ALIPAY_NOTIFY_URL) {
     params.notify_url = (options?.notifyUrl || env.ALIPAY_NOTIFY_URL)!;
   }
-  if (options?.returnUrl || env.ALIPAY_RETURN_URL) {
+  if (options?.returnUrl !== null && (options?.returnUrl || env.ALIPAY_RETURN_URL)) {
     params.return_url = (options?.returnUrl || env.ALIPAY_RETURN_URL)!;
   }
 
@@ -62,6 +63,7 @@ export function pageExecute(
 export async function execute<T extends AlipayResponse>(
   method: string,
   bizContent: Record<string, unknown>,
+  options?: { notifyUrl?: string; returnUrl?: string },
 ): Promise<T> {
   const env = assertAlipayEnv(getEnv());
 
@@ -70,6 +72,13 @@ export async function execute<T extends AlipayResponse>(
     method,
     biz_content: JSON.stringify(bizContent),
   };
+
+  if (options?.notifyUrl) {
+    params.notify_url = options.notifyUrl;
+  }
+  if (options?.returnUrl) {
+    params.return_url = options.returnUrl;
+  }
 
   params.sign = generateSign(params, env.ALIPAY_PRIVATE_KEY);
 
@@ -80,11 +89,11 @@ export async function execute<T extends AlipayResponse>(
     signal: AbortSignal.timeout(10_000),
   });
 
-  const data = await response.json();
+  const data = await parseAlipayJsonResponse<Record<string, unknown>>(response);
 
   // 支付宝响应格式：{ "alipay_trade_query_response": { ... }, "sign": "..." }
   const responseKey = method.replace(/\./g, '_') + '_response';
-  const result = data[responseKey] as T;
+  const result = data[responseKey] as T | undefined;
 
   if (!result) {
     throw new Error(`Alipay API error: unexpected response format for ${method}`);

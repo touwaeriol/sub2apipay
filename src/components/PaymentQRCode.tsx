@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import QRCode from 'qrcode';
 import type { Locale } from '@/lib/locale';
+import type { PublicOrderStatusSnapshot } from '@/lib/order/status';
 import {
   isStripeType,
   getPaymentMeta,
@@ -22,12 +23,26 @@ interface PaymentQRCodeProps {
   amount: number;
   payAmount?: number;
   expiresAt: string;
-  onStatusChange: (status: string) => void;
+  statusAccessToken?: string;
+  onStatusChange: (status: PublicOrderStatusSnapshot) => void;
   onBack: () => void;
   dark?: boolean;
   isEmbedded?: boolean;
   isMobile?: boolean;
   locale?: Locale;
+}
+
+function isVisibleOrderOutcome(data: PublicOrderStatusSnapshot): boolean {
+  return data.paymentSuccess || TERMINAL_STATUSES.has(data.status);
+}
+
+function buildOrderStatusUrl(orderId: string, statusAccessToken?: string): string {
+  const query = new URLSearchParams();
+  if (statusAccessToken) {
+    query.set('access_token', statusAccessToken);
+  }
+  const suffix = query.toString();
+  return suffix ? `/api/orders/${orderId}?${suffix}` : `/api/orders/${orderId}`;
 }
 
 export default function PaymentQRCode({
@@ -41,6 +56,7 @@ export default function PaymentQRCode({
   amount,
   payAmount: payAmountProp,
   expiresAt,
+  statusAccessToken,
   onStatusChange,
   onBack,
   dark = false,
@@ -93,6 +109,7 @@ export default function PaymentQRCode({
       locale === 'en' ? 'Popup was blocked by your browser. Please allow popups for this site and try again.' : '弹出窗口被浏览器拦截，请允许本站弹出窗口后重试',
     redirectingPrefix: locale === 'en' ? 'Redirecting to ' : '正在跳转到',
     redirectingSuffix: locale === 'en' ? '...' : '...',
+    redirectRetryHint: locale === 'en' ? 'If the payment app does not open automatically, go back and try again.' : '如未自动拉起支付应用，请返回上一页后重新发起支付。',
     notRedirectedPrefix: locale === 'en' ? 'Not redirected? Open ' : '未跳转？点击前往',
     goPaySuffix: locale === 'en' ? '' : '',
     gotoPrefix: locale === 'en' ? 'Open ' : '前往',
@@ -109,7 +126,7 @@ export default function PaymentQRCode({
     if (isEmbedded) {
       window.open(payUrl!, '_blank');
     } else {
-      window.location.href = payUrl!;
+      window.location.replace(payUrl!);
     }
   }, [shouldAutoRedirect, redirected, payUrl, isEmbedded]);
 
@@ -223,6 +240,9 @@ export default function PaymentQRCode({
     returnUrl.search = '';
     returnUrl.searchParams.set('order_id', orderId);
     returnUrl.searchParams.set('status', 'success');
+    if (statusAccessToken) {
+      returnUrl.searchParams.set('access_token', statusAccessToken);
+    }
     if (locale === 'en') {
       returnUrl.searchParams.set('lang', 'en');
     }
@@ -254,6 +274,9 @@ export default function PaymentQRCode({
     popupUrl.searchParams.set('amount', String(amount));
     popupUrl.searchParams.set('theme', dark ? 'dark' : 'light');
     popupUrl.searchParams.set('method', stripePaymentMethod);
+    if (statusAccessToken) {
+      popupUrl.searchParams.set('access_token', statusAccessToken);
+    }
     if (locale === 'en') {
       popupUrl.searchParams.set('lang', 'en');
     }
@@ -305,16 +328,16 @@ export default function PaymentQRCode({
 
   const pollStatus = useCallback(async () => {
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await fetch(buildOrderStatusUrl(orderId, statusAccessToken));
       if (res.ok) {
-        const data = await res.json();
-        if (TERMINAL_STATUSES.has(data.status)) {
-          onStatusChange(data.status);
+        const data = (await res.json()) as PublicOrderStatusSnapshot;
+        if (isVisibleOrderOutcome(data)) {
+          onStatusChange(data);
         }
       }
     } catch {
     }
-  }, [orderId, onStatusChange]);
+  }, [orderId, onStatusChange, statusAccessToken]);
 
   useEffect(() => {
     if (expired) return;
@@ -326,12 +349,12 @@ export default function PaymentQRCode({
   const handleCancel = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await fetch(buildOrderStatusUrl(orderId, statusAccessToken));
       if (!res.ok) return;
-      const data = await res.json();
+      const data = (await res.json()) as PublicOrderStatusSnapshot;
 
-      if (TERMINAL_STATUSES.has(data.status)) {
-        onStatusChange(data.status);
+      if (data.paymentSuccess || TERMINAL_STATUSES.has(data.status)) {
+        onStatusChange(data);
         return;
       }
 
@@ -346,7 +369,14 @@ export default function PaymentQRCode({
           setCancelBlocked(true);
           return;
         }
-        onStatusChange('CANCELLED');
+        onStatusChange({
+          id: orderId,
+          status: 'CANCELLED',
+          expiresAt,
+          paymentSuccess: false,
+          rechargeSuccess: false,
+          rechargeStatus: 'closed',
+        });
       } else {
         await pollStatus();
       }

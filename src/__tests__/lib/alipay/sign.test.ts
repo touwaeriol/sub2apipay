@@ -34,7 +34,6 @@ describe('Alipay RSA2 Sign', () => {
       const sign = generateSign(testParams, privateKey);
       expect(sign).toBeTruthy();
       expect(typeof sign).toBe('string');
-      // base64 格式
       expect(() => Buffer.from(sign, 'base64')).not.toThrow();
     });
 
@@ -44,16 +43,15 @@ describe('Alipay RSA2 Sign', () => {
       expect(sign1).toBe(sign2);
     });
 
-    it('should filter out sign and sign_type fields', () => {
+    it('should filter out sign field but keep sign_type in request signing', () => {
       const paramsWithSign = { ...testParams, sign: 'old_sign' };
       const sign1 = generateSign(testParams, privateKey);
       const sign2 = generateSign(paramsWithSign, privateKey);
       expect(sign1).toBe(sign2);
 
-      // sign_type should also be excluded from signing (per Alipay spec)
       const paramsWithSignType = { ...testParams, sign_type: 'RSA2' };
       const sign3 = generateSign(paramsWithSignType, privateKey);
-      expect(sign3).toBe(sign1);
+      expect(sign3).not.toBe(sign1);
     });
 
     it('should filter out empty values', () => {
@@ -111,6 +109,36 @@ describe('Alipay RSA2 Sign', () => {
     it('should work with both bare keys', () => {
       const sign = generateSign(testParams, barePrivateKey);
       const valid = verifySign(testParams, barePublicKey, sign);
+      expect(valid).toBe(true);
+    });
+
+    it('should work with private key using literal \\n escapes', () => {
+      const escapedPrivateKey = privateKey.replace(/\n/g, '\\n');
+      const sign = generateSign(testParams, escapedPrivateKey);
+      const valid = verifySign(testParams, publicKey, sign);
+      expect(valid).toBe(true);
+    });
+
+    it('should work with public key using literal \\n escapes', () => {
+      const escapedPublicKey = publicKey.replace(/\n/g, '\\n');
+      const sign = generateSign(testParams, privateKey);
+      const valid = verifySign(testParams, escapedPublicKey, sign);
+      expect(valid).toBe(true);
+    });
+
+    it('should work with CRLF-formatted PEM keys', () => {
+      const crlfPrivateKey = privateKey.replace(/\n/g, '\r\n');
+      const crlfPublicKey = publicKey.replace(/\n/g, '\r\n');
+      const sign = generateSign(testParams, crlfPrivateKey);
+      const valid = verifySign(testParams, crlfPublicKey, sign);
+      expect(valid).toBe(true);
+    });
+
+    it('should work with literal \\r\\n escapes in PEM keys', () => {
+      const escapedCrlfPrivateKey = privateKey.replace(/\n/g, '\\r\\n');
+      const escapedCrlfPublicKey = publicKey.replace(/\n/g, '\\r\\n');
+      const sign = generateSign(testParams, escapedCrlfPrivateKey);
+      const valid = verifySign(testParams, escapedCrlfPublicKey, sign);
       expect(valid).toBe(true);
     });
   });

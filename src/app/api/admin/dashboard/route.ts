@@ -3,23 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { OrderStatus } from '@prisma/client';
-
-/** 业务时区偏移（东八区，+8 小时） */
-const BIZ_TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
-const BIZ_TZ_NAME = 'Asia/Shanghai';
-
-/** 获取业务时区下的 YYYY-MM-DD */
-function toBizDateStr(d: Date): string {
-  const local = new Date(d.getTime() + BIZ_TZ_OFFSET_MS);
-  return local.toISOString().split('T')[0];
-}
-
-/** 获取业务时区下"今天 00:00"对应的 UTC 时间 */
-function getBizDayStartUTC(d: Date): Date {
-  const bizDateStr = toBizDateStr(d);
-  // bizDateStr 00:00 在业务时区 = bizDateStr 00:00 - offset 在 UTC
-  return new Date(`${bizDateStr}T00:00:00+08:00`);
-}
+import { BIZ_TZ_NAME, getBizDayStartUTC, toBizDateStr } from '@/lib/time/biz-day';
 
 export async function GET(request: NextRequest) {
   if (!(await verifyAdminToken(request))) return unauthorizedResponse();

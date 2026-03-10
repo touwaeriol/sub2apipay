@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { verifyAdminToken } from '@/lib/admin-auth';
+import { deriveOrderState } from '@/lib/order/status';
+import { ORDER_STATUS_ACCESS_QUERY_KEY, verifyOrderStatusAccessToken } from '@/lib/order/status-access';
 
 /**
- * 订单状态轮询接口 — 仅返回 status / expiresAt 两个字段。
+ * 订单状态轮询接口。
  *
- * 安全考虑：
- * - 订单 ID 使用 CUID（25 位随机字符），具有足够的不可预测性，
- *   暴力猜测的成本远高于信息价值。
- * - 仅暴露 status 和 expiresAt，不涉及用户隐私或金额信息。
- * - 前端 PaymentQRCode 组件每 2 秒轮询此接口以更新支付状态，
- *   添加认证会增加不必要的复杂度且影响轮询性能。
+ * 返回最小必要信息供前端判断：
+ * - 原始订单状态（status / expiresAt）
+ * - 支付是否成功（paymentSuccess）
+ * - 充值是否成功 / 当前充值阶段（rechargeSuccess / rechargeStatus）
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const accessToken = request.nextUrl.searchParams.get(ORDER_STATUS_ACCESS_QUERY_KEY);
+  const isAuthorized = verifyOrderStatusAccessToken(id, accessToken) || (await verifyAdminToken(request));
+
+  if (!isAuthorized) {
+    return NextResponse.json({ error: '未授权访问该订单状态' }, { status: 401 });
+  }
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -20,6 +27,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       id: true,
       status: true,
       expiresAt: true,
+      paidAt: true,
+      completedAt: true,
     },
   });
 
@@ -27,9 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: '订单不存在' }, { status: 404 });
   }
 
+  const derived = deriveOrderState(order);
+
   return NextResponse.json({
     id: order.id,
     status: order.status,
     expiresAt: order.expiresAt,
+    paymentSuccess: derived.paymentSuccess,
+    rechargeSuccess: derived.rechargeSuccess,
+    rechargeStatus: derived.rechargeStatus,
   });
 }

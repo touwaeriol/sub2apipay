@@ -11,6 +11,7 @@ function StripePopupContent() {
   const amount = parseFloat(searchParams.get('amount') || '0') || 0;
   const theme = searchParams.get('theme') === 'dark' ? 'dark' : 'light';
   const method = searchParams.get('method') || '';
+  const accessToken = searchParams.get('access_token');
   const locale = resolveLocale(searchParams.get('lang'));
   const isDark = theme === 'dark';
   const isAlipay = method === 'alipay';
@@ -50,9 +51,12 @@ function StripePopupContent() {
     returnUrl.searchParams.set('status', 'success');
     returnUrl.searchParams.set('popup', '1');
     returnUrl.searchParams.set('theme', theme);
+    if (accessToken) {
+      returnUrl.searchParams.set('access_token', accessToken);
+    }
     applyLocaleToSearchParams(returnUrl.searchParams, locale);
     return returnUrl.toString();
-  }, [orderId, theme, locale]);
+  }, [orderId, theme, locale, accessToken]);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {

@@ -1,6 +1,10 @@
 import { getEnv } from '@/lib/config';
 import type { Sub2ApiUser, Sub2ApiRedeemCode } from './types';
 
+const DEFAULT_TIMEOUT_MS = 10_000;
+const RECHARGE_TIMEOUT_MS = 30_000;
+const RECHARGE_MAX_ATTEMPTS = 2;
+
 function getHeaders(idempotencyKey?: string): Record<string, string> {
   const env = getEnv();
   const headers: Record<string, string> = {
@@ -13,13 +17,18 @@ function getHeaders(idempotencyKey?: string): Record<string, string> {
   return headers;
 }
 
+function isRetryableFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.name === 'TimeoutError' || error.name === 'AbortError' || error.name === 'TypeError';
+}
+
 export async function getCurrentUserByToken(token: string): Promise<Sub2ApiUser> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/auth/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -34,7 +43,7 @@ export async function getUser(userId: number): Promise<Sub2ApiUser> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}`, {
     headers: getHeaders(),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -53,26 +62,43 @@ export async function createAndRedeem(
   notes: string,
 ): Promise<Sub2ApiRedeemCode> {
   const env = getEnv();
-  const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/redeem-codes/create-and-redeem`, {
-    method: 'POST',
-    headers: getHeaders(`sub2apipay:recharge:${code}`),
-    body: JSON.stringify({
-      code,
-      type: 'balance',
-      value,
-      user_id: userId,
-      notes,
-    }),
-    signal: AbortSignal.timeout(10_000),
+  const url = `${env.SUB2API_BASE_URL}/api/v1/admin/redeem-codes/create-and-redeem`;
+  const body = JSON.stringify({
+    code,
+    type: 'balance',
+    value,
+    user_id: userId,
+    notes,
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Recharge failed (${response.status}): ${JSON.stringify(errorData)}`);
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= RECHARGE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: getHeaders(`sub2apipay:recharge:${code}`),
+        body,
+        signal: AbortSignal.timeout(RECHARGE_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Recharge failed (${response.status}): ${JSON.stringify(errorData)}`);
+      }
+
+      const data = await response.json();
+      return data.redeem_code as Sub2ApiRedeemCode;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= RECHARGE_MAX_ATTEMPTS || !isRetryableFetchError(error)) {
+        throw error;
+      }
+      console.warn(`Sub2API createAndRedeem attempt ${attempt} timed out, retrying...`);
+    }
   }
 
-  const data = await response.json();
-  return data.redeem_code as Sub2ApiRedeemCode;
+  throw lastError instanceof Error ? lastError : new Error('Recharge failed');
 }
 
 export async function subtractBalance(
@@ -90,7 +116,7 @@ export async function subtractBalance(
       amount,
       notes,
     }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -114,7 +140,7 @@ export async function addBalance(
       amount,
       notes,
     }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   if (!response.ok) {

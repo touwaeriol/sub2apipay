@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { queryMethodLimits } from '@/lib/order/limits';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { getNextBizDayStartUTC } from '@/lib/time/biz-day';
 
 /**
  * GET /api/limits
@@ -13,19 +14,14 @@ import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
  *     wxpay:  { dailyLimit: 10000, used: 10000, remaining: 0,    available: false },
  *     stripe: { dailyLimit: 0,     used: 500,  remaining: null,  available: true }
  *   },
- *   resetAt: "2026-03-02T00:00:00.000Z"  // UTC 次日零点（限额重置时间）
+ *   resetAt: "2026-03-02T16:00:00.000Z"  // 业务时区（Asia/Shanghai）次日零点对应的 UTC 时间
  * }
  */
 export async function GET() {
   initPaymentProviders();
   const types = paymentRegistry.getSupportedTypes();
-
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-  const resetAt = new Date(todayStart);
-  resetAt.setUTCDate(resetAt.getUTCDate() + 1);
-
   const methods = await queryMethodLimits(types);
+  const resetAt = getNextBizDayStartUTC();
 
   return NextResponse.json({ methods, resetAt });
 }

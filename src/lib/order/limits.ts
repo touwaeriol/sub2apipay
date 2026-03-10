@@ -3,6 +3,7 @@ import { getEnv } from '@/lib/config';
 import { ORDER_STATUS } from '@/lib/constants';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import { getMethodFeeRate } from './fee';
+import { getBizDayStartUTC } from '@/lib/time/biz-day';
 
 /**
  * 获取指定支付渠道的每日全平台限额（0 = 不限制）。
@@ -12,20 +13,18 @@ export function getMethodDailyLimit(paymentType: string): number {
   const env = getEnv();
   const key = `MAX_DAILY_AMOUNT_${paymentType.toUpperCase()}` as keyof typeof env;
   const val = env[key];
-  if (typeof val === 'number') return val; // 明确配置（含 0）
+  if (typeof val === 'number') return val;
 
-  // 尝试从已注册的 provider 取默认值
   initPaymentProviders();
   const providerDefault = paymentRegistry.getDefaultLimit(paymentType);
   if (providerDefault?.dailyMax !== undefined) return providerDefault.dailyMax;
 
-  // 兜底：process.env（支持未在 schema 中声明的动态渠道）
   const raw = process.env[`MAX_DAILY_AMOUNT_${paymentType.toUpperCase()}`];
   if (raw !== undefined) {
     const num = Number(raw);
     return Number.isFinite(num) && num >= 0 ? num : 0;
   }
-  return 0; // 默认不限制
+  return 0;
 }
 
 /**
@@ -43,21 +42,15 @@ export function getMethodSingleLimit(paymentType: string): number {
   const providerDefault = paymentRegistry.getDefaultLimit(paymentType);
   if (providerDefault?.singleMax !== undefined) return providerDefault.singleMax;
 
-  return 0; // 使用全局 MAX_RECHARGE_AMOUNT
+  return 0;
 }
 
 export interface MethodLimitStatus {
-  /** 每日限额，0 = 不限 */
   dailyLimit: number;
-  /** 今日已使用金额 */
   used: number;
-  /** 剩余每日额度，null = 不限 */
   remaining: number | null;
-  /** 是否还可使用（false = 今日额度已满） */
   available: boolean;
-  /** 单笔限额，0 = 使用全局配置 MAX_RECHARGE_AMOUNT */
   singleMax: number;
-  /** 手续费率百分比，0 = 无手续费 */
   feeRate: number;
 }
 
@@ -66,8 +59,7 @@ export interface MethodLimitStatus {
  * 一次 DB groupBy 完成，调用方按需传入渠道列表。
  */
 export async function queryMethodLimits(paymentTypes: string[]): Promise<Record<string, MethodLimitStatus>> {
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayStart = getBizDayStartUTC();
 
   const usageRows = await prisma.order.groupBy({
     by: ['paymentType'],
@@ -79,7 +71,7 @@ export async function queryMethodLimits(paymentTypes: string[]): Promise<Record<
     _sum: { amount: true },
   });
 
-  const usageMap = Object.fromEntries(usageRows.map((r) => [r.paymentType, Number(r._sum.amount ?? 0)]));
+  const usageMap = Object.fromEntries(usageRows.map((row) => [row.paymentType, Number(row._sum.amount ?? 0)]));
 
   const result: Record<string, MethodLimitStatus> = {};
   for (const type of paymentTypes) {

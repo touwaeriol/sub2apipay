@@ -1,12 +1,122 @@
+
 'use client';
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
-import { applyLocaleToSearchParams, pickLocaleText, resolveLocale } from '@/lib/locale';
+import { applyLocaleToSearchParams, pickLocaleText, resolveLocale, type Locale } from '@/lib/locale';
+import type { PublicOrderStatusSnapshot } from '@/lib/order/status';
+
+type WindowWithAlipayBridge = Window & {
+  AlipayJSBridge?: {
+    call: (name: string, params?: unknown, callback?: (...args: unknown[]) => void) => void;
+  };
+};
+
+function tryCloseViaAlipayBridge(): boolean {
+  const bridge = (window as WindowWithAlipayBridge).AlipayJSBridge;
+  if (!bridge?.call) {
+    return false;
+  }
+
+  try {
+    bridge.call('closeWebview');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function closeCurrentWindow() {
+  if (tryCloseViaAlipayBridge()) {
+    return;
+  }
+
+  let settled = false;
+  const handleBridgeReady = () => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    document.removeEventListener('AlipayJSBridgeReady', handleBridgeReady);
+    if (!tryCloseViaAlipayBridge()) {
+      window.close();
+    }
+  };
+
+  document.addEventListener('AlipayJSBridgeReady', handleBridgeReady, { once: true });
+  window.setTimeout(() => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    document.removeEventListener('AlipayJSBridgeReady', handleBridgeReady);
+    window.close();
+  }, 250);
+}
+
+function buildOrderStatusUrl(orderId: string, accessToken?: string | null): string {
+  const query = new URLSearchParams();
+  if (accessToken) {
+    query.set('access_token', accessToken);
+  }
+  const suffix = query.toString();
+  return suffix ? `/api/orders/${orderId}?${suffix}` : `/api/orders/${orderId}`;
+}
+
+function getStatusConfig(order: PublicOrderStatusSnapshot | null, locale: Locale, hasAccessToken: boolean) {
+  if (!order) {
+    return locale === 'en'
+      ? { label: 'Payment Error', color: 'text-red-600', icon: '✗', message: hasAccessToken ? 'Unable to load the order status. Please try again later.' : 'Missing order access token. Please go back to the recharge page.' }
+      : { label: '支付异常', color: 'text-red-600', icon: '✗', message: hasAccessToken ? '未查询到订单状态，请稍后重试。' : '订单访问凭证缺失，请返回原充值页查看订单结果。' };
+  }
+
+  if (order.rechargeSuccess) {
+    return locale === 'en'
+      ? { label: 'Recharge Successful', color: 'text-green-600', icon: '✓', message: 'Your balance has been credited successfully.' }
+      : { label: '充值成功', color: 'text-green-600', icon: '✓', message: '余额已成功到账！' };
+  }
+
+  if (order.paymentSuccess) {
+    if (order.rechargeStatus === 'paid_pending' || order.rechargeStatus === 'recharging') {
+      return locale === 'en'
+        ? { label: 'Top-up Processing', color: 'text-blue-600', icon: '⟳', message: 'Payment succeeded, and the balance top-up is being processed.' }
+        : { label: '充值处理中', color: 'text-blue-600', icon: '⟳', message: '支付成功，余额正在充值中...' };
+    }
+
+    if (order.rechargeStatus === 'failed') {
+      return locale === 'en'
+        ? { label: 'Payment Successful', color: 'text-amber-600', icon: '!', message: 'Payment succeeded, but the balance top-up has not completed yet. Please check again later or contact the administrator.' }
+        : { label: '支付成功', color: 'text-amber-600', icon: '!', message: '支付成功，但余额充值暂未完成，请稍后查看订单结果或联系管理员。' };
+    }
+  }
+
+  if (order.status === 'PENDING') {
+    return locale === 'en'
+      ? { label: 'Awaiting Payment', color: 'text-yellow-600', icon: '⏳', message: 'The order has not been paid yet.' }
+      : { label: '等待支付', color: 'text-yellow-600', icon: '⏳', message: '订单尚未完成支付。' };
+  }
+
+  if (order.status === 'EXPIRED') {
+    return locale === 'en'
+      ? { label: 'Order Expired', color: 'text-gray-500', icon: '⏰', message: 'This order has expired. Please create a new order.' }
+      : { label: '订单已超时', color: 'text-gray-500', icon: '⏰', message: '订单已超时，请重新充值。' };
+  }
+
+  if (order.status === 'CANCELLED') {
+    return locale === 'en'
+      ? { label: 'Order Cancelled', color: 'text-gray-500', icon: '✗', message: 'This order has been cancelled.' }
+      : { label: '订单已取消', color: 'text-gray-500', icon: '✗', message: '订单已被取消。' };
+  }
+
+  return locale === 'en'
+    ? { label: 'Payment Error', color: 'text-red-600', icon: '✗', message: 'Please contact the administrator.' }
+    : { label: '支付异常', color: 'text-red-600', icon: '✗', message: '请联系管理员处理。' };
+}
 
 function ResultContent() {
   const searchParams = useSearchParams();
   const outTradeNo = searchParams.get('out_trade_no') || searchParams.get('order_id');
+  const accessToken = searchParams.get('access_token');
   const isPopup = searchParams.get('popup') === '1';
   const theme = searchParams.get('theme') === 'dark' ? 'dark' : 'light';
   const locale = resolveLocale(searchParams.get('lang'));
@@ -14,30 +124,16 @@ function ResultContent() {
 
   const text = {
     checking: pickLocaleText(locale, '查询支付结果中...', 'Checking payment result...'),
-    success: pickLocaleText(locale, '充值成功', 'Top-up successful'),
-    processing: pickLocaleText(locale, '充值处理中', 'Top-up processing'),
-    successMessage: pickLocaleText(locale, '余额已成功到账！', 'Balance has been credited successfully!'),
-    processingMessage: pickLocaleText(locale, '支付成功，余额正在充值中...', 'Payment succeeded, balance is being credited...'),
-    returning: pickLocaleText(locale, '正在返回...', 'Returning...'),
-    returnNow: pickLocaleText(locale, '立即返回', 'Return now'),
-    pending: pickLocaleText(locale, '等待支付', 'Awaiting payment'),
-    pendingMessage: pickLocaleText(locale, '订单尚未完成支付', 'The order has not been paid yet'),
-    expired: pickLocaleText(locale, '订单已超时', 'Order expired'),
-    cancelled: pickLocaleText(locale, '订单已取消', 'Order cancelled'),
-    abnormal: pickLocaleText(locale, '支付异常', 'Payment error'),
-    expiredMessage: pickLocaleText(locale, '订单已超时，请重新充值', 'This order has expired. Please create a new one.'),
-    cancelledMessage: pickLocaleText(locale, '订单已被取消', 'This order has been cancelled.'),
-    abnormalMessage: pickLocaleText(locale, '请联系管理员处理', 'Please contact the administrator.'),
     back: pickLocaleText(locale, '返回', 'Back'),
+    closeSoon: pickLocaleText(locale, '此窗口将在 3 秒后自动关闭', 'This window will close automatically in 3 seconds'),
+    closeNow: pickLocaleText(locale, '立即关闭窗口', 'Close now'),
     orderId: pickLocaleText(locale, '订单号', 'Order ID'),
     unknown: pickLocaleText(locale, '未知', 'Unknown'),
-    loading: pickLocaleText(locale, '加载中...', 'Loading...'),
   };
 
-  const [status, setStatus] = useState<string | null>(null);
+  const [orderState, setOrderState] = useState<PublicOrderStatusSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInPopup, setIsInPopup] = useState(false);
-  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     if (isPopup || window.opener) {
@@ -46,17 +142,17 @@ function ResultContent() {
   }, [isPopup]);
 
   useEffect(() => {
-    if (!outTradeNo) {
+    if (!outTradeNo || !accessToken) {
       setLoading(false);
       return;
     }
 
     const checkOrder = async () => {
       try {
-        const res = await fetch(`/api/orders/${outTradeNo}`);
+        const res = await fetch(buildOrderStatusUrl(outTradeNo, accessToken));
         if (res.ok) {
-          const data = await res.json();
-          setStatus(data.status);
+          const data = (await res.json()) as PublicOrderStatusSnapshot;
+          setOrderState(data);
         }
       } catch {
       } finally {
@@ -71,13 +167,13 @@ function ResultContent() {
       clearInterval(timer);
       clearTimeout(timeout);
     };
-  }, [outTradeNo]);
+  }, [outTradeNo, accessToken]);
 
-  const isSuccess = status === 'COMPLETED' || status === 'PAID' || status === 'RECHARGING';
+  const shouldAutoClose = Boolean(orderState?.paymentSuccess);
 
   const goBack = () => {
     if (isInPopup) {
-      window.close();
+      closeCurrentWindow();
       return;
     }
 
@@ -93,20 +189,12 @@ function ResultContent() {
   };
 
   useEffect(() => {
-    if (!isSuccess) return;
-    setCountdown(5);
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          goBack();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isSuccess, isInPopup]);
+    if (!isInPopup || !shouldAutoClose) return;
+    const timer = setTimeout(() => {
+      closeCurrentWindow();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [isInPopup, shouldAutoClose]);
 
   if (loading) {
     return (
@@ -116,8 +204,7 @@ function ResultContent() {
     );
   }
 
-  const isPending = status === 'PENDING';
-  const countdownText = countdown > 0 ? pickLocaleText(locale, `${countdown} 秒后自动返回`, `${countdown} seconds before returning`) : text.returning;
+  const display = getStatusConfig(orderState, locale, Boolean(accessToken));
 
   return (
     <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
@@ -127,58 +214,31 @@ function ResultContent() {
           isDark ? 'bg-slate-900 text-slate-100' : 'bg-white',
         ].join(' ')}
       >
-        {isSuccess ? (
-          <>
-            <div className="text-6xl text-green-500">✓</div>
-            <h1 className="mt-4 text-xl font-bold text-green-600">{status === 'COMPLETED' ? text.success : text.processing}</h1>
-            <p className={isDark ? 'mt-2 text-slate-400' : 'mt-2 text-gray-500'}>
-              {status === 'COMPLETED' ? text.successMessage : text.processingMessage}
-            </p>
+        <div className={`text-6xl ${display.color}`}>{display.icon}</div>
+        <h1 className={`mt-4 text-xl font-bold ${display.color}`}>{display.label}</h1>
+        <p className={isDark ? 'mt-2 text-slate-400' : 'mt-2 text-gray-500'}>{display.message}</p>
+
+        {isInPopup ? (
+          shouldAutoClose && (
             <div className="mt-4 space-y-2">
-              <p className={isDark ? 'text-sm text-slate-500' : 'text-sm text-gray-400'}>{countdownText}</p>
+              <p className={isDark ? 'text-sm text-slate-500' : 'text-sm text-gray-400'}>{text.closeSoon}</p>
               <button
                 type="button"
-                onClick={goBack}
+                onClick={closeCurrentWindow}
                 className="text-sm text-blue-600 underline hover:text-blue-700"
               >
-                {text.returnNow}
+                {text.closeNow}
               </button>
             </div>
-          </>
-        ) : isPending ? (
-          <>
-            <div className="text-6xl text-yellow-500">⏳</div>
-            <h1 className="mt-4 text-xl font-bold text-yellow-600">{text.pending}</h1>
-            <p className={isDark ? 'mt-2 text-slate-400' : 'mt-2 text-gray-500'}>{text.pendingMessage}</p>
-            <button
-              type="button"
-              onClick={goBack}
-              className="mt-4 text-sm text-blue-600 underline hover:text-blue-700"
-            >
-              {text.back}
-            </button>
-          </>
+          )
         ) : (
-          <>
-            <div className="text-6xl text-red-500">✗</div>
-            <h1 className="mt-4 text-xl font-bold text-red-600">
-              {status === 'EXPIRED' ? text.expired : status === 'CANCELLED' ? text.cancelled : text.abnormal}
-            </h1>
-            <p className={isDark ? 'mt-2 text-slate-400' : 'mt-2 text-gray-500'}>
-              {status === 'EXPIRED'
-                ? text.expiredMessage
-                : status === 'CANCELLED'
-                  ? text.cancelledMessage
-                  : text.abnormalMessage}
-            </p>
-            <button
-              type="button"
-              onClick={goBack}
-              className="mt-4 text-sm text-blue-600 underline hover:text-blue-700"
-            >
-              {text.back}
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={goBack}
+            className="mt-4 text-sm text-blue-600 underline hover:text-blue-700"
+          >
+            {text.back}
+          </button>
         )}
 
         <p className={isDark ? 'mt-4 text-xs text-slate-500' : 'mt-4 text-xs text-gray-400'}>

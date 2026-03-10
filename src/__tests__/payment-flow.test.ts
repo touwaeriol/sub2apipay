@@ -241,11 +241,7 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
       provider = new AlipayProvider();
     });
 
-    it('PC: uses alipay.trade.page.pay, returns payUrl only (no qrCode)', async () => {
-      mockAlipayPageExecute.mockReturnValue(
-        'https://openapi.alipay.com/gateway.do?method=alipay.trade.page.pay&sign=xxx',
-      );
-
+    it('PC: returns service short-link payUrl and qrCode', async () => {
       const request: CreatePaymentRequest = {
         orderId: 'order-ali-001',
         amount: 100,
@@ -257,20 +253,10 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
       const result = await provider.createPayment(request);
 
       expect(result.tradeNo).toBe('order-ali-001');
-      expect(result.payUrl).toContain('alipay.trade.page.pay');
-      expect(result.qrCode).toBeUndefined();
+      expect(result.payUrl).toBe('https://pay.example.com/pay/order-ali-001');
+      expect(result.qrCode).toBe('https://pay.example.com/pay/order-ali-001');
+      expect(mockAlipayPageExecute).not.toHaveBeenCalled();
 
-      // Verify pageExecute was called with PC method
-      expect(mockAlipayPageExecute).toHaveBeenCalledWith(
-        expect.objectContaining({
-          product_code: 'FAST_INSTANT_TRADE_PAY',
-        }),
-        expect.objectContaining({
-          method: 'alipay.trade.page.pay',
-        }),
-      );
-
-      // PC + payUrl only (no qrCode) => shouldAutoRedirect = true (redirect to Alipay cashier page)
       expect(
         shouldAutoRedirect({
           expired: false,
@@ -279,7 +265,7 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
           qrCode: result.qrCode,
           isMobile: false,
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('Mobile: uses alipay.trade.wap.pay, returns payUrl', async () => {
@@ -323,15 +309,10 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
       ).toBe(true);
     });
 
-    it('Mobile: falls back to PC page.pay when wap.pay throws', async () => {
-      // First call (wap.pay) throws, second call (page.pay) succeeds
-      mockAlipayPageExecute
-        .mockImplementationOnce(() => {
-          throw new Error('WAP pay not available');
-        })
-        .mockReturnValueOnce(
-          'https://openapi.alipay.com/gateway.do?method=alipay.trade.page.pay&sign=fallback',
-        );
+    it('Mobile: surfaces wap.pay creation errors', async () => {
+      mockAlipayPageExecute.mockImplementationOnce(() => {
+        throw new Error('WAP pay not available');
+      });
 
       const request: CreatePaymentRequest = {
         orderId: 'order-ali-003',
@@ -341,20 +322,11 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
         isMobile: true,
       };
 
-      const result = await provider.createPayment(request);
-
-      expect(result.payUrl).toContain('alipay.trade.page.pay');
-      // pageExecute was called twice: first wap.pay (failed), then page.pay
-      expect(mockAlipayPageExecute).toHaveBeenCalledTimes(2);
-      expect(mockAlipayPageExecute).toHaveBeenNthCalledWith(
-        1,
+      await expect(provider.createPayment(request)).rejects.toThrow('WAP pay not available');
+      expect(mockAlipayPageExecute).toHaveBeenCalledTimes(1);
+      expect(mockAlipayPageExecute).toHaveBeenCalledWith(
         expect.objectContaining({ product_code: 'QUICK_WAP_WAY' }),
         expect.objectContaining({ method: 'alipay.trade.wap.pay' }),
-      );
-      expect(mockAlipayPageExecute).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({ product_code: 'FAST_INSTANT_TRADE_PAY' }),
-        expect.objectContaining({ method: 'alipay.trade.page.pay' }),
       );
     });
 
