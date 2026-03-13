@@ -118,7 +118,7 @@ PAYMENT_PROVIDERS=easypay
 PAYMENT_PROVIDERS=alipay,wxpay,stripe
 ```
 
-> **Alipay / WeChat Pay (official)** and **EasyPay** can coexist. Official channels connect directly to Alipay/WeChat Pay APIs with funds going straight to your merchant account and lower fees; EasyPay uses a third-party aggregation platform with a lower barrier to entry. When using EasyPay, choose providers where funds are routed through official Alipay/WeChat Pay channels rather than third-party collection.
+> **Alipay / WeChat Pay (official)** and **EasyPay** can coexist. Official channels connect directly to Alipay/WeChat Pay APIs with funds going straight to your merchant account and lower fees; EasyPay proxies payments through a third-party platform that forwards to official channels, with a lower barrier to entry. When using EasyPay, choose providers where funds are forwarded through official channels directly to your own account, rather than collected by a third party.
 
 #### EasyPay (Alipay / WeChat Pay Aggregation)
 
