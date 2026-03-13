@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
           groupWeeklyLimit: group?.weekly_limit_usd ?? null,
           groupMonthlyLimit: group?.monthly_limit_usd ?? null,
           groupModelScopes: group?.supported_model_scopes ?? null,
+          groupAllowMessagesDispatch: group?.allow_messages_dispatch ?? false,
+          groupDefaultMappedModel: group?.default_mapped_model ?? null,
           productName: plan.productName ?? null,
           createdAt: plan.createdAt,
           updatedAt: plan.updatedAt,

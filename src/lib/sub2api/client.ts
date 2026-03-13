@@ -272,11 +272,12 @@ export async function listSubscriptions(params?: {
   }
 
   const data = await response.json();
+  const paginated = data.data ?? {};
   return {
-    subscriptions: (data.data ?? []) as Sub2ApiSubscription[],
-    total: data.total ?? 0,
-    page: data.page ?? 1,
-    page_size: data.page_size ?? 50,
+    subscriptions: (paginated.items ?? []) as Sub2ApiSubscription[],
+    total: paginated.total ?? 0,
+    page: paginated.page ?? 1,
+    page_size: paginated.page_size ?? 50,
   };
 }
 
