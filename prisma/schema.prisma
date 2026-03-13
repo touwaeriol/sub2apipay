@@ -114,6 +114,7 @@ model SubscriptionPlan {
   price         Decimal  @db.Decimal(10, 2)
   originalPrice Decimal? @db.Decimal(10, 2) @map("original_price")
   validityDays  Int      @default(30) @map("validity_days")
+  validityUnit  String   @default("day") @map("validity_unit") // day | week | month
   features      String?  @db.Text
   forSale       Boolean  @default(false) @map("for_sale")
   sortOrder     Int      @default(0) @map("sort_order")

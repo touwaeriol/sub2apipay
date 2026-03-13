@@ -60,15 +60,20 @@ export async function createAndRedeem(
   value: number,
   userId: number,
   notes: string,
+  options?: { type?: 'balance' | 'subscription'; groupId?: number; validityDays?: number },
 ): Promise<Sub2ApiRedeemCode> {
   const env = getEnv();
   const url = `${env.SUB2API_BASE_URL}/api/v1/admin/redeem-codes/create-and-redeem`;
   const body = JSON.stringify({
     code,
-    type: 'balance',
+    type: options?.type ?? 'balance',
     value,
     user_id: userId,
     notes,
+    ...(options?.type === 'subscription' && {
+      group_id: options.groupId,
+      validity_days: options.validityDays,
+    }),
   });
 
   let lastError: unknown;

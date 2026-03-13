@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
-import { getUserSubscriptions } from '@/lib/sub2api/client';
+import { getUserSubscriptions, getUser } from '@/lib/sub2api/client';
 
 export async function GET(request: NextRequest) {
   if (!(await verifyAdminToken(request))) return unauthorizedResponse(request);
@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '无效的 user_id' }, { status: 400 });
     }
 
-    const subscriptions = await getUserSubscriptions(parsedUserId);
+    const [subscriptions, user] = await Promise.all([
+      getUserSubscriptions(parsedUserId),
+      getUser(parsedUserId).catch(() => null),
+    ]);
 
     // 如果提供了 group_id 筛选，过滤结果
     const groupId = searchParams.get('group_id');
@@ -26,7 +29,10 @@ export async function GET(request: NextRequest) {
       ? subscriptions.filter((s) => s.group_id === Number(groupId))
       : subscriptions;
 
-    return NextResponse.json({ subscriptions: filtered });
+    return NextResponse.json({
+      subscriptions: filtered,
+      user: user ? { id: user.id, username: user.username, email: user.email } : null,
+    });
   } catch (error) {
     console.error('Failed to query subscriptions:', error);
     return NextResponse.json({ error: '查询订阅信息失败' }, { status: 500 });

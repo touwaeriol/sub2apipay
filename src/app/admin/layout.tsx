@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { path: '/admin/dashboard', label: { zh: '数据概览', en: 'Dashboard' } },
   { path: '/admin/channels', label: { zh: '渠道管理', en: 'Channels' } },
   { path: '/admin/subscriptions', label: { zh: '订阅管理', en: 'Subscriptions' } },
-  { path: '/admin/settings', label: { zh: '系统配置', en: 'Settings' } },
 ];
 
 function AdminNav() {

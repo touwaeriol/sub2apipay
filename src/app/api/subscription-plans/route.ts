@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
           price: Number(plan.price),
           originalPrice: plan.originalPrice ? Number(plan.originalPrice) : null,
           validityDays: plan.validityDays,
+          validityUnit: plan.validityUnit,
           features: plan.features ? JSON.parse(plan.features) : [],
           limits: groupInfo,
         };

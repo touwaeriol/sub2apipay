@@ -9,7 +9,6 @@ import PayPageLayout from '@/components/PayPageLayout';
 import MobileOrderList from '@/components/MobileOrderList';
 import MainTabs from '@/components/MainTabs';
 import ChannelGrid from '@/components/ChannelGrid';
-import TopUpModal from '@/components/TopUpModal';
 import SubscriptionPlanCard from '@/components/SubscriptionPlanCard';
 import SubscriptionConfirm from '@/components/SubscriptionConfirm';
 import UserSubscriptions from '@/components/UserSubscriptions';
@@ -79,7 +78,7 @@ function PayContent() {
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [userSubscriptions, setUserSubscriptions] = useState<UserSub[]>([]);
-  const [topUpModalOpen, setTopUpModalOpen] = useState(false);
+  const [showTopUpForm, setShowTopUpForm] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanInfo | null>(null);
   const [channelsLoaded, setChannelsLoaded] = useState(false);
 
@@ -97,6 +96,30 @@ function PayContent() {
   const helpImageUrl = (config.helpImageUrl || '').trim();
   const helpText = (config.helpText || '').trim();
   const hasHelpContent = Boolean(helpImageUrl || helpText);
+
+  // 通用帮助/客服信息区块
+  const renderHelpSection = () => {
+    if (!hasHelpContent) return null;
+    return (
+      <div className={[
+        'mt-6 rounded-2xl border p-4',
+        isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50',
+      ].join(' ')}>
+        <div className={['text-xs font-medium', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+          {pickLocaleText(locale, '帮助', 'Support')}
+        </div>
+        {helpImageUrl && (
+          <img src={helpImageUrl} alt="help" onClick={() => setHelpImageOpen(true)} className="mt-3 max-h-40 w-full cursor-zoom-in rounded-lg object-contain bg-white/70 p-2" />
+        )}
+        {helpText && (
+          <div className={['mt-3 space-y-1 text-sm leading-6', isDark ? 'text-slate-300' : 'text-slate-600'].join(' ')}>
+            {helpText.split('\n').map((line, i) => (<p key={i}>{line}</p>))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const MAX_PENDING = 3;
   const pendingBlocked = pendingCount >= MAX_PENDING;
 
@@ -367,21 +390,12 @@ function PayContent() {
         expiresAt: data.expiresAt,
         statusAccessToken: data.statusAccessToken,
       });
-      setTopUpModalOpen(false);
       setStep('paying');
     } catch {
       setError(pickLocaleText(locale, '网络错误，请稍后重试', 'Network error'));
     } finally {
       setLoading(false);
     }
-  };
-
-  // ── 充值弹窗确认 → 进入支付方式选择（复用 PaymentForm） ──
-  const [topUpAmount, setTopUpAmount] = useState<number | null>(null);
-
-  const handleTopUpConfirm = (amount: number) => {
-    setTopUpAmount(amount);
-    setTopUpModalOpen(false);
   };
 
   // ── 订阅下单 ──
@@ -445,7 +459,7 @@ function PayContent() {
     setError('');
     setSubscriptionError('');
     setSelectedPlan(null);
-    setTopUpAmount(null);
+    setShowTopUpForm(false);
   };
 
   // ── 渲染 ──
@@ -563,7 +577,7 @@ function PayContent() {
           )}
 
           {/* ── 有渠道配置：新版UI ── */}
-          {channelsLoaded && showMainTabs && (activeMobileTab === 'pay' || !isMobile) && !selectedPlan && !topUpAmount && (
+          {channelsLoaded && showMainTabs && (activeMobileTab === 'pay' || !isMobile) && !selectedPlan && !showTopUpForm && (
             <>
               <MainTabs activeTab={mainTab} onTabChange={setMainTab} showSubscribeTab={hasPlans} isDark={isDark} locale={locale} />
 
@@ -571,33 +585,75 @@ function PayContent() {
                 <div className="mt-6">
                   {/* 按量付费说明 banner */}
                   <div className={[
-                    'mb-6 rounded-xl border p-4',
-                    isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50',
+                    'mb-6 rounded-2xl border p-6',
+                    isDark
+                      ? 'border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 to-purple-500/10'
+                      : 'border-emerald-500/20 bg-gradient-to-r from-emerald-50 to-purple-50',
                   ].join(' ')}>
-                    <div className="flex items-start gap-3">
-                      <div className={['text-2xl'].join(' ')}>💰</div>
-                      <div>
-                        <div className={['font-semibold', isDark ? 'text-emerald-400' : 'text-emerald-600'].join(' ')}>
+                    <div className="flex items-start gap-4">
+                      <div className={[
+                        'flex-shrink-0 rounded-lg p-2',
+                        isDark ? 'bg-emerald-500/20' : 'bg-emerald-500/15',
+                      ].join(' ')}>
+                        <svg className="h-6 w-6 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={['text-lg font-semibold mb-2', isDark ? 'text-emerald-400' : 'text-emerald-700'].join(' ')}>
                           {pickLocaleText(locale, '按量付费模式', 'Pay-as-you-go')}
-                        </div>
-                        <div className={['mt-1 text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                        </h3>
+                        <p className={['text-sm mb-4', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
                           {pickLocaleText(
                             locale,
-                            '无需订阅，充值即用，按实际消耗扣费，余额所有渠道通用。',
-                            'No subscription needed. Top up and use. Charged by actual usage. Balance works across all channels.',
+                            '无需订阅，充值即用，按实际消耗扣费。余额所有渠道通用，可自由切换。价格以美元计价（当前比例：1美元≈1人民币）',
+                            'No subscription needed. Top up and use. Charged by actual usage. Balance works across all channels. Priced in USD (current rate: 1 USD ≈ 1 CNY)',
                           )}
+                        </p>
+                        <div className="flex flex-wrap gap-4 text-sm">
+                          <div className={['flex items-center gap-2', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                            <svg className="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                              <polyline points="17 6 23 6 23 12" />
+                            </svg>
+                            <span>{pickLocaleText(locale, '倍率越低越划算', 'Lower rate = better value')}</span>
+                          </div>
+                          <div className={['flex items-center gap-2', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                            <svg className="h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                            <span>{pickLocaleText(locale, '0.15倍率 = 1元可用约6.67美元额度', '0.15 rate = 1 CNY ≈ $6.67 quota')}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <ChannelGrid
-                    channels={channels}
-                    onTopUp={() => setTopUpModalOpen(true)}
-                    isDark={isDark}
-                    locale={locale}
-                    userBalance={userInfo?.balance}
-                  />
+                  {hasChannels ? (
+                    <ChannelGrid
+                      channels={channels}
+                      onTopUp={() => setShowTopUpForm(true)}
+                      isDark={isDark}
+                      locale={locale}
+                      userBalance={userInfo?.balance}
+                    />
+                  ) : (
+                    <PaymentForm
+                      userId={resolvedUserId ?? 0}
+                      userName={userInfo?.username}
+                      userBalance={userInfo?.balance}
+                      enabledPaymentTypes={config.enabledPaymentTypes}
+                      methodLimits={config.methodLimits}
+                      minAmount={config.minAmount}
+                      maxAmount={config.maxAmount}
+                      onSubmit={handleSubmit}
+                      loading={loading}
+                      dark={isDark}
+                      pendingBlocked={pendingBlocked}
+                      pendingCount={pendingCount}
+                      locale={locale}
+                    />
+                  )}
 
                   {/* 用户已有订阅 */}
                   {userSubscriptions.length > 0 && (
@@ -619,6 +675,8 @@ function PayContent() {
                       />
                     </div>
                   )}
+
+                  {renderHelpSection()}
                 </div>
               )}
 
@@ -653,27 +711,21 @@ function PayContent() {
                       />
                     </div>
                   )}
+
+                  {renderHelpSection()}
                 </div>
               )}
 
               <PurchaseFlow isDark={isDark} locale={locale} />
-
-              <TopUpModal
-                open={topUpModalOpen}
-                onClose={() => setTopUpModalOpen(false)}
-                onConfirm={handleTopUpConfirm}
-                isDark={isDark}
-                locale={locale}
-              />
             </>
           )}
 
-          {/* 充值弹窗确认后：选择支付方式 */}
-          {topUpAmount && step === 'form' && (
+          {/* 点击"立即充值"后：直接显示 PaymentForm（含金额选择） */}
+          {showTopUpForm && step === 'form' && (
             <div>
               <button
                 type="button"
-                onClick={() => setTopUpAmount(null)}
+                onClick={() => setShowTopUpForm(false)}
                 className={['mb-4 text-sm', isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-500'].join(' ')}
               >
                 ← {pickLocaleText(locale, '返回', 'Back')}
@@ -686,32 +738,35 @@ function PayContent() {
                 methodLimits={config.methodLimits}
                 minAmount={config.minAmount}
                 maxAmount={config.maxAmount}
-                onSubmit={(_, paymentType) => handleSubmit(topUpAmount, paymentType)}
+                onSubmit={handleSubmit}
                 loading={loading}
                 dark={isDark}
                 pendingBlocked={pendingBlocked}
                 pendingCount={pendingCount}
                 locale={locale}
-                fixedAmount={topUpAmount}
               />
+              {renderHelpSection()}
             </div>
           )}
 
           {/* 订阅确认页 */}
           {selectedPlan && step === 'form' && (
-            <SubscriptionConfirm
-              plan={selectedPlan}
-              paymentTypes={config.enabledPaymentTypes}
-              onBack={() => setSelectedPlan(null)}
-              onSubmit={handleSubscriptionSubmit}
-              loading={loading}
-              isDark={isDark}
-              locale={locale}
-            />
+            <>
+              <SubscriptionConfirm
+                plan={selectedPlan}
+                paymentTypes={config.enabledPaymentTypes}
+                onBack={() => setSelectedPlan(null)}
+                onSubmit={handleSubscriptionSubmit}
+                loading={loading}
+                isDark={isDark}
+                locale={locale}
+              />
+              {renderHelpSection()}
+            </>
           )}
 
           {/* ── 无渠道配置：传统充值UI ── */}
-          {channelsLoaded && !showMainTabs && config.enabledPaymentTypes.length > 0 && !topUpAmount && !selectedPlan && (
+          {channelsLoaded && !showMainTabs && config.enabledPaymentTypes.length > 0 && !selectedPlan && (
             <>
               {isMobile ? (
                 activeMobileTab === 'pay' ? (
@@ -813,25 +868,28 @@ function PayContent() {
 
       {/* ── 支付阶段 ── */}
       {step === 'paying' && orderResult && (
-        <PaymentQRCode
-          orderId={orderResult.orderId}
-          token={token || undefined}
-          payUrl={orderResult.payUrl}
-          qrCode={orderResult.qrCode}
-          clientSecret={orderResult.clientSecret}
-          stripePublishableKey={config.stripePublishableKey}
-          paymentType={orderResult.paymentType}
-          amount={orderResult.amount}
-          payAmount={orderResult.payAmount}
-          expiresAt={orderResult.expiresAt}
-          statusAccessToken={orderResult.statusAccessToken}
-          onStatusChange={handleStatusChange}
-          onBack={handleBack}
-          dark={isDark}
-          isEmbedded={isEmbedded}
-          isMobile={isMobile}
-          locale={locale}
-        />
+        <>
+          <PaymentQRCode
+            orderId={orderResult.orderId}
+            token={token || undefined}
+            payUrl={orderResult.payUrl}
+            qrCode={orderResult.qrCode}
+            clientSecret={orderResult.clientSecret}
+            stripePublishableKey={config.stripePublishableKey}
+            paymentType={orderResult.paymentType}
+            amount={orderResult.amount}
+            payAmount={orderResult.payAmount}
+            expiresAt={orderResult.expiresAt}
+            statusAccessToken={orderResult.statusAccessToken}
+            onStatusChange={handleStatusChange}
+            onBack={handleBack}
+            dark={isDark}
+            isEmbedded={isEmbedded}
+            isMobile={isMobile}
+            locale={locale}
+          />
+          {renderHelpSection()}
+        </>
       )}
 
       {/* ── 结果阶段 ── */}

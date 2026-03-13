@@ -3,6 +3,7 @@
 import React from 'react';
 import type { Locale } from '@/lib/locale';
 import { pickLocaleText } from '@/lib/locale';
+import { formatValidityLabel, formatValiditySuffix, type ValidityUnit } from '@/lib/subscription-utils';
 
 export interface PlanInfo {
   id: string;
@@ -11,6 +12,7 @@ export interface PlanInfo {
   price: number;
   originalPrice: number | null;
   validityDays: number;
+  validityUnit?: ValidityUnit;
   features: string[];
   description: string | null;
   limits: {
@@ -28,15 +30,9 @@ interface SubscriptionPlanCardProps {
 }
 
 export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale }: SubscriptionPlanCardProps) {
-  const periodLabel =
-    plan.validityDays === 30
-      ? pickLocaleText(locale, '包月', 'Monthly')
-      : pickLocaleText(locale, `包${plan.validityDays}天`, `${plan.validityDays} Days`);
-
-  const periodSuffix =
-    plan.validityDays === 30
-      ? pickLocaleText(locale, '/月', '/mo')
-      : pickLocaleText(locale, `/${plan.validityDays}天`, `/${plan.validityDays}d`);
+  const unit = plan.validityUnit ?? 'day';
+  const periodLabel = formatValidityLabel(plan.validityDays, unit, locale);
+  const periodSuffix = formatValiditySuffix(plan.validityDays, unit, locale);
 
   return (
     <div

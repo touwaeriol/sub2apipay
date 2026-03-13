@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { group_id, name, description, price, original_price, validity_days, features, for_sale, sort_order } = body;
+    const { group_id, name, description, price, original_price, validity_days, validity_unit, features, for_sale, sort_order } = body;
 
     if (!group_id || !name || price === undefined) {
       return NextResponse.json({ error: '缺少必填字段: group_id, name, price' }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         price,
         originalPrice: original_price ?? null,
         validityDays: validity_days ?? 30,
+        validityUnit: ['day', 'week', 'month'].includes(validity_unit) ? validity_unit : 'day',
         features: features ?? null,
         forSale: for_sale ?? false,
         sortOrder: sort_order ?? 0,

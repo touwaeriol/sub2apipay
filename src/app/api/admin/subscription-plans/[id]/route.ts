@@ -34,6 +34,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.price !== undefined) data.price = body.price;
     if (body.original_price !== undefined) data.originalPrice = body.original_price;
     if (body.validity_days !== undefined) data.validityDays = body.validity_days;
+    if (body.validity_unit !== undefined && ['day', 'week', 'month'].includes(body.validity_unit)) {
+      data.validityUnit = body.validity_unit;
+    }
     if (body.features !== undefined) data.features = body.features;
     if (body.for_sale !== undefined) data.forSale = body.for_sale;
     if (body.sort_order !== undefined) data.sortOrder = body.sort_order;

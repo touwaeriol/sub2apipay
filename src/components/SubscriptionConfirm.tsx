@@ -6,6 +6,7 @@ import type { Locale } from '@/lib/locale';
 import { pickLocaleText } from '@/lib/locale';
 import { getPaymentTypeLabel, getPaymentIconSrc } from '@/lib/pay-utils';
 import type { PlanInfo } from '@/components/SubscriptionPlanCard';
+import { formatValidityLabel } from '@/lib/subscription-utils';
 
 interface SubscriptionConfirmProps {
   plan: PlanInfo;
@@ -28,10 +29,7 @@ export default function SubscriptionConfirm({
 }: SubscriptionConfirmProps) {
   const [selectedPayment, setSelectedPayment] = useState(paymentTypes[0] || '');
 
-  const periodLabel =
-    plan.validityDays === 30
-      ? pickLocaleText(locale, '包月', 'Monthly')
-      : pickLocaleText(locale, `包${plan.validityDays}天`, `${plan.validityDays} Days`);
+  const periodLabel = formatValidityLabel(plan.validityDays, plan.validityUnit ?? 'day', locale);
 
   const handleSubmit = () => {
     if (selectedPayment && !loading) {

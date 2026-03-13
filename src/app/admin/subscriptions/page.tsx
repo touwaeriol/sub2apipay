@@ -14,6 +14,7 @@ interface SubscriptionPlan {
   price: number;
   originalPrice: number | null;
   validDays: number;
+  validityUnit: 'day' | 'week' | 'month';
   features: string[];
   groupId: string;
   groupName: string | null;
@@ -25,17 +26,32 @@ interface SubscriptionPlan {
 interface Sub2ApiGroup {
   id: string;
   name: string;
+  subscription_type: string;
+  daily_limit_usd: number | null;
+  weekly_limit_usd: number | null;
+  monthly_limit_usd: number | null;
 }
 
-interface UserSubscription {
-  userId: number;
-  groupId: string;
+interface Sub2ApiSubscription {
+  id: number;
+  user_id: number;
+  group_id: number;
+  starts_at: string;
+  expires_at: string;
   status: string;
-  startsAt: string | null;
-  expiresAt: string | null;
-  dailyUsage: number | null;
-  weeklyUsage: number | null;
-  monthlyUsage: number | null;
+  daily_usage_usd: number;
+  weekly_usage_usd: number;
+  monthly_usage_usd: number;
+  daily_window_start: string | null;
+  weekly_window_start: string | null;
+  monthly_window_start: string | null;
+  notes: string | null;
+}
+
+interface SubsUserInfo {
+  id: number;
+  username: string;
+  email: string;
 }
 
 /* ---------- i18n ---------- */
@@ -67,7 +83,11 @@ function buildText(locale: Locale) {
         fieldDescription: 'Description',
         fieldPrice: 'Price (CNY)',
         fieldOriginalPrice: 'Original Price (CNY)',
-        fieldValidDays: 'Validity (days)',
+        fieldValidDays: 'Validity',
+        fieldValidUnit: 'Unit',
+        unitDay: 'Day(s)',
+        unitWeek: 'Week(s)',
+        unitMonth: 'Month(s)',
         fieldFeatures: 'Features (one per line)',
         fieldSortOrder: 'Sort Order',
         fieldEnabled: 'For Sale',
@@ -88,19 +108,27 @@ function buildText(locale: Locale) {
         noPlans: 'No plans configured',
         searchUserId: 'Search by user ID',
         search: 'Search',
-        colUserId: 'User ID',
-        colStatus: 'Status',
-        colStartsAt: 'Starts At',
-        colExpiresAt: 'Expires At',
-        colDailyUsage: 'Daily Usage',
-        colWeeklyUsage: 'Weekly Usage',
-        colMonthlyUsage: 'Monthly Usage',
         noSubs: 'No subscription records found',
         enterUserId: 'Enter a user ID to search',
         saveFailed: 'Failed to save plan',
         deleteFailed: 'Failed to delete plan',
         loadFailed: 'Failed to load data',
         days: 'days',
+        user: 'User',
+        group: 'Group',
+        usage: 'Usage',
+        expiresAt: 'Expires At',
+        status: 'Status',
+        active: 'Active',
+        expired: 'Expired',
+        suspended: 'Suspended',
+        daily: 'Daily',
+        weekly: 'Weekly',
+        monthly: 'Monthly',
+        remaining: 'remaining',
+        unlimited: 'Unlimited',
+        resetIn: 'Reset in',
+        noGroup: 'Unknown Group',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -127,7 +155,11 @@ function buildText(locale: Locale) {
         fieldDescription: '描述',
         fieldPrice: '价格（元）',
         fieldOriginalPrice: '原价（元）',
-        fieldValidDays: '有效天数',
+        fieldValidDays: '有效期',
+        fieldValidUnit: '单位',
+        unitDay: '天',
+        unitWeek: '周',
+        unitMonth: '月',
         fieldFeatures: '特性描述（每行一个）',
         fieldSortOrder: '排序',
         fieldEnabled: '启用售卖',
@@ -148,20 +180,99 @@ function buildText(locale: Locale) {
         noPlans: '暂无套餐配置',
         searchUserId: '按用户 ID 搜索',
         search: '搜索',
-        colUserId: '用户 ID',
-        colStatus: '状态',
-        colStartsAt: '开始时间',
-        colExpiresAt: '到期时间',
-        colDailyUsage: '日用量',
-        colWeeklyUsage: '周用量',
-        colMonthlyUsage: '月用量',
         noSubs: '未找到订阅记录',
         enterUserId: '请输入用户 ID 进行搜索',
         saveFailed: '保存套餐失败',
         deleteFailed: '删除套餐失败',
         loadFailed: '加载数据失败',
         days: '天',
+        user: '用户',
+        group: '分组',
+        usage: '用量',
+        expiresAt: '到期时间',
+        status: '状态',
+        active: '生效中',
+        expired: '已过期',
+        suspended: '已暂停',
+        daily: '日用量',
+        weekly: '周用量',
+        monthly: '月用量',
+        remaining: '剩余',
+        unlimited: '无限制',
+        resetIn: '重置于',
+        noGroup: '未知分组',
       };
+}
+
+/* ---------- helpers ---------- */
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function daysRemaining(expiresAt: string | null): number | null {
+  if (!expiresAt) return null;
+  const now = new Date();
+  const exp = new Date(expiresAt);
+  const diff = exp.getTime() - now.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function resetCountdown(windowStart: string | null, periodDays: number): string | null {
+  if (!windowStart) return null;
+  const start = new Date(windowStart);
+  const resetAt = new Date(start.getTime() + periodDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const diffMs = resetAt.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours >= 24) {
+    const d = Math.floor(hours / 24);
+    const h = hours % 24;
+    return `${d}d ${h}h`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+/* ---------- UsageBar component ---------- */
+
+function UsageBar({
+  label,
+  usage,
+  limit,
+  resetText,
+  isDark,
+}: {
+  label: string;
+  usage: number;
+  limit: number | null;
+  resetText: string | null;
+  isDark: boolean;
+}) {
+  const pct = limit && limit > 0 ? Math.min((usage / limit) * 100, 100) : 0;
+  const barColor = pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-yellow-500' : 'bg-green-500';
+
+  return (
+    <div className="mb-1.5 last:mb-0">
+      <div className="flex items-center justify-between text-xs">
+        <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{label}</span>
+        <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+          ${usage.toFixed(2)} {limit != null ? `/ $${limit.toFixed(2)}` : ''}
+        </span>
+      </div>
+      {limit != null && limit > 0 ? (
+        <div className={`mt-0.5 h-1.5 w-full rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+      ) : null}
+      {resetText && (
+        <div className={`mt-0.5 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{resetText}</div>
+      )}
+    </div>
+  );
 }
 
 /* ---------- main content ---------- */
@@ -195,6 +306,7 @@ function SubscriptionsContent() {
   const [formPrice, setFormPrice] = useState('');
   const [formOriginalPrice, setFormOriginalPrice] = useState('');
   const [formValidDays, setFormValidDays] = useState('30');
+  const [formValidUnit, setFormValidUnit] = useState<'day' | 'week' | 'month'>('day');
   const [formFeatures, setFormFeatures] = useState('');
   const [formSortOrder, setFormSortOrder] = useState('0');
   const [formEnabled, setFormEnabled] = useState(true);
@@ -202,9 +314,11 @@ function SubscriptionsContent() {
 
   /* --- subs state --- */
   const [subsUserId, setSubsUserId] = useState('');
-  const [subs, setSubs] = useState<UserSubscription[]>([]);
+  const [subs, setSubs] = useState<Sub2ApiSubscription[]>([]);
+  const [subsUser, setSubsUser] = useState<SubsUserInfo | null>(null);
   const [subsLoading, setSubsLoading] = useState(false);
   const [subsSearched, setSubsSearched] = useState(false);
+
 
   /* --- fetch plans --- */
   const fetchPlans = useCallback(async () => {
@@ -256,6 +370,7 @@ function SubscriptionsContent() {
     setFormPrice('');
     setFormOriginalPrice('');
     setFormValidDays('30');
+    setFormValidUnit('day');
     setFormFeatures('');
     setFormSortOrder('0');
     setFormEnabled(true);
@@ -270,6 +385,7 @@ function SubscriptionsContent() {
     setFormPrice(String(plan.price));
     setFormOriginalPrice(plan.originalPrice != null ? String(plan.originalPrice) : '');
     setFormValidDays(String(plan.validDays));
+    setFormValidUnit(plan.validityUnit ?? 'day');
     setFormFeatures((plan.features ?? []).join('\n'));
     setFormSortOrder(String(plan.sortOrder));
     setFormEnabled(plan.enabled);
@@ -281,24 +397,25 @@ function SubscriptionsContent() {
     setEditingPlan(null);
   };
 
-  /* --- save plan --- */
+  /* --- save plan (snake_case for backend) --- */
   const handleSave = async () => {
     if (!formName.trim() || !formPrice) return;
     setSaving(true);
     setError('');
     const body = {
-      groupId: formGroupId || undefined,
+      group_id: formGroupId ? Number(formGroupId) : undefined,
       name: formName.trim(),
       description: formDescription.trim() || null,
       price: parseFloat(formPrice),
-      originalPrice: formOriginalPrice ? parseFloat(formOriginalPrice) : null,
-      validDays: parseInt(formValidDays, 10) || 30,
+      original_price: formOriginalPrice ? parseFloat(formOriginalPrice) : null,
+      validity_days: parseInt(formValidDays, 10) || 30,
+      validity_unit: formValidUnit,
       features: formFeatures
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean),
-      sortOrder: parseInt(formSortOrder, 10) || 0,
-      enabled: formEnabled,
+      sort_order: parseInt(formSortOrder, 10) || 0,
+      for_sale: formEnabled,
     };
     try {
       const url = editingPlan
@@ -349,6 +466,7 @@ function SubscriptionsContent() {
     if (!token || !subsUserId.trim()) return;
     setSubsLoading(true);
     setSubsSearched(true);
+    setSubsUser(null);
     try {
       const res = await fetch(
         `/api/admin/subscriptions?token=${encodeURIComponent(token)}&user_id=${encodeURIComponent(subsUserId.trim())}`,
@@ -361,7 +479,8 @@ function SubscriptionsContent() {
         throw new Error(t.requestFailed);
       }
       const data = await res.json();
-      setSubs(Array.isArray(data) ? data : data.subscriptions ?? []);
+      setSubs(data.subscriptions ?? []);
+      setSubsUser(data.user ?? null);
     } catch {
       setError(t.loadFailed);
     } finally {
@@ -395,9 +514,13 @@ function SubscriptionsContent() {
       : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
-  /* available groups for the form (exclude groups already used by other plans, unless editing that plan) */
+  /* available groups for the form: only subscription type, exclude already used */
+  const subscriptionGroups = groups.filter((g) => g.subscription_type === 'subscription');
   const usedGroupIds = new Set(plans.filter((p) => p.id !== editingPlan?.id).map((p) => p.groupId));
-  const availableGroups = groups.filter((g) => !usedGroupIds.has(g.id));
+  const availableGroups = subscriptionGroups.filter((g) => !usedGroupIds.has(String(g.id)));
+
+  /* group id → name map (all groups, for subscription display) */
+  const groupNameMap = new Map(groups.map((g) => [String(g.id), g.name]));
 
   /* --- tab classes --- */
   const tabCls = (active: boolean) =>
@@ -437,6 +560,31 @@ function SubscriptionsContent() {
 
   const labelCls = ['block text-sm font-medium mb-1', isDark ? 'text-slate-300' : 'text-slate-700'].join(' ');
 
+  /* --- status badge --- */
+  const statusBadge = (status: string) => {
+    const map: Record<string, { label: string; cls: string }> = {
+      active: {
+        label: t.active,
+        cls: isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700',
+      },
+      expired: {
+        label: t.expired,
+        cls: isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-50 text-red-600',
+      },
+      suspended: {
+        label: t.suspended,
+        cls: isDark ? 'bg-yellow-500/20 text-yellow-300' : 'bg-yellow-50 text-yellow-700',
+      },
+    };
+    const info = map[status] ?? {
+      label: status,
+      cls: isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500',
+    };
+    return (
+      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${info.cls}`}>{info.label}</span>
+    );
+  };
+
   return (
     <PayPageLayout
       isDark={isDark}
@@ -457,6 +605,7 @@ function SubscriptionsContent() {
             type="button"
             onClick={() => {
               if (activeTab === 'plans') fetchPlans();
+              if (activeTab === 'subs' && subsSearched) fetchSubs();
             }}
             className={btnBase}
           >
@@ -548,7 +697,12 @@ function SubscriptionsContent() {
                         {plan.originalPrice != null ? plan.originalPrice.toFixed(2) : '-'}
                       </td>
                       <td className={tdCls}>
-                        {plan.validDays} {t.days}
+                        {plan.validDays}{' '}
+                        {plan.validityUnit === 'month'
+                          ? t.unitMonth
+                          : plan.validityUnit === 'week'
+                            ? t.unitWeek
+                            : t.unitDay}
                       </td>
                       <td className={tdCls}>
                         <span
@@ -645,7 +799,35 @@ function SubscriptionsContent() {
             </button>
           </div>
 
-          {/* Subs table */}
+          {/* User info card */}
+          {subsUser && (
+            <div
+              className={[
+                'mb-4 flex items-center gap-3 rounded-xl border p-3',
+                isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold',
+                  isDark ? 'bg-indigo-500/30 text-indigo-200' : 'bg-blue-100 text-blue-700',
+                ].join(' ')}
+              >
+                {(subsUser.email?.[0] ?? subsUser.username?.[0] ?? '?').toUpperCase()}
+              </div>
+              <div>
+                <div className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {subsUser.username}
+                </div>
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subsUser.email}</div>
+              </div>
+              <div className={`ml-auto text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                ID: {subsUser.id}
+              </div>
+            </div>
+          )}
+
+          {/* Subs list */}
           <div className={tableWrapCls}>
             {subsLoading ? (
               <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.loading}</div>
@@ -659,46 +841,101 @@ function SubscriptionsContent() {
               <table className="w-full">
                 <thead>
                   <tr className={`border-b ${rowBorderCls}`}>
-                    <th className={thCls}>{t.colUserId}</th>
-                    <th className={thCls}>{t.colGroup}</th>
-                    <th className={thCls}>{t.colStatus}</th>
-                    <th className={thCls}>{t.colStartsAt}</th>
-                    <th className={thCls}>{t.colExpiresAt}</th>
-                    <th className={thCls}>{t.colDailyUsage}</th>
-                    <th className={thCls}>{t.colWeeklyUsage}</th>
-                    <th className={thCls}>{t.colMonthlyUsage}</th>
+                    <th className={thCls}>{t.group}</th>
+                    <th className={thCls}>{t.status}</th>
+                    <th className={thCls}>{t.usage}</th>
+                    <th className={thCls}>{t.expiresAt}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {subs.map((sub, idx) => (
-                    <tr key={`${sub.userId}-${sub.groupId}-${idx}`} className={`border-b ${rowBorderCls} last:border-b-0`}>
-                      <td className={tdCls}>{sub.userId}</td>
-                      <td className={tdCls}>
-                        <span className="font-mono text-xs">{sub.groupId}</span>
-                      </td>
-                      <td className={tdCls}>
-                        <span
-                          className={[
-                            'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
-                            sub.status === 'active'
-                              ? isDark
-                                ? 'bg-green-500/20 text-green-300'
-                                : 'bg-green-50 text-green-700'
-                              : isDark
-                                ? 'bg-slate-700 text-slate-400'
-                                : 'bg-gray-100 text-gray-500',
-                          ].join(' ')}
-                        >
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td className={tdCls}>{sub.startsAt ?? '-'}</td>
-                      <td className={tdCls}>{sub.expiresAt ?? '-'}</td>
-                      <td className={tdCls}>{sub.dailyUsage ?? '-'}</td>
-                      <td className={tdCls}>{sub.weeklyUsage ?? '-'}</td>
-                      <td className={tdCls}>{sub.monthlyUsage ?? '-'}</td>
-                    </tr>
-                  ))}
+                  {subs.map((sub) => {
+                    const gName = groupNameMap.get(String(sub.group_id)) ?? t.noGroup;
+                    const remaining = daysRemaining(sub.expires_at);
+                    const group = groups.find((g) => String(g.id) === String(sub.group_id));
+                    const dailyLimit = group?.daily_limit_usd ?? null;
+                    const weeklyLimit = group?.weekly_limit_usd ?? null;
+                    const monthlyLimit = group?.monthly_limit_usd ?? null;
+
+                    return (
+                      <tr key={sub.id} className={`border-b ${rowBorderCls} last:border-b-0`}>
+                        {/* Group */}
+                        <td className={tdCls}>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-block h-2 w-2 rounded-full ${sub.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`}
+                            />
+                            <span className="font-medium">{gName}</span>
+                          </div>
+                          <div className={`mt-0.5 text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            ID: {sub.group_id}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className={tdCls}>{statusBadge(sub.status)}</td>
+
+                        {/* Usage */}
+                        <td className={`${tdCls} min-w-[200px]`}>
+                          <UsageBar
+                            label={t.daily}
+                            usage={sub.daily_usage_usd}
+                            limit={dailyLimit}
+                            resetText={
+                              sub.daily_window_start
+                                ? `${t.resetIn} ${resetCountdown(sub.daily_window_start, 1) ?? '-'}`
+                                : null
+                            }
+                            isDark={isDark}
+                          />
+                          <UsageBar
+                            label={t.weekly}
+                            usage={sub.weekly_usage_usd}
+                            limit={weeklyLimit}
+                            resetText={
+                              sub.weekly_window_start
+                                ? `${t.resetIn} ${resetCountdown(sub.weekly_window_start, 7) ?? '-'}`
+                                : null
+                            }
+                            isDark={isDark}
+                          />
+                          <UsageBar
+                            label={t.monthly}
+                            usage={sub.monthly_usage_usd}
+                            limit={monthlyLimit}
+                            resetText={
+                              sub.monthly_window_start
+                                ? `${t.resetIn} ${resetCountdown(sub.monthly_window_start, 30) ?? '-'}`
+                                : null
+                            }
+                            isDark={isDark}
+                          />
+                        </td>
+
+                        {/* Expires */}
+                        <td className={tdCls}>
+                          <div>{formatDate(sub.expires_at)}</div>
+                          {remaining != null && (
+                            <div
+                              className={`mt-0.5 text-xs ${
+                                remaining <= 0
+                                  ? 'text-red-500'
+                                  : remaining <= 7
+                                    ? 'text-yellow-500'
+                                    : isDark
+                                      ? 'text-slate-400'
+                                      : 'text-slate-500'
+                              }`}
+                            >
+                              {remaining > 0
+                                ? `${remaining} ${t.days} ${t.remaining}`
+                                : t.expired}
+                            </div>
+                          )}
+                        </td>
+
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -740,7 +977,7 @@ function SubscriptionsContent() {
                     </option>
                   ))}
                   {/* If editing, ensure the current group is always visible */}
-                  {editingPlan && !availableGroups.some((g) => g.id === editingPlan.groupId) && (
+                  {editingPlan && !availableGroups.some((g) => String(g.id) === editingPlan.groupId) && (
                     <option value={editingPlan.groupId}>
                       {editingPlan.groupName ?? editingPlan.groupId} ({editingPlan.groupId})
                     </option>
@@ -798,8 +1035,8 @@ function SubscriptionsContent() {
                 </div>
               </div>
 
-              {/* Valid days + Sort */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Valid days + Unit + Sort */}
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className={labelCls}>{t.fieldValidDays}</label>
                   <input
@@ -809,6 +1046,18 @@ function SubscriptionsContent() {
                     onChange={(e) => setFormValidDays(e.target.value)}
                     className={inputCls}
                   />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.fieldValidUnit}</label>
+                  <select
+                    value={formValidUnit}
+                    onChange={(e) => setFormValidUnit(e.target.value as 'day' | 'week' | 'month')}
+                    className={inputCls}
+                  >
+                    <option value="day">{t.unitDay}</option>
+                    <option value="week">{t.unitWeek}</option>
+                    <option value="month">{t.unitMonth}</option>
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls}>{t.fieldSortOrder}</label>
@@ -881,6 +1130,8 @@ function SubscriptionsContent() {
           </div>
         </div>
       )}
+
+      {/* ====== Extend Confirmation Modal ====== */}
     </PayPageLayout>
   );
 }

@@ -6,7 +6,8 @@ import { getMethodDailyLimit } from './limits';
 import { getMethodFeeRate, calculatePayAmount } from './fee';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType, PaymentNotification } from '@/lib/payment';
-import { getUser, createAndRedeem, subtractBalance, addBalance, getGroup, assignSubscription } from '@/lib/sub2api/client';
+import { getUser, createAndRedeem, subtractBalance, addBalance, getGroup } from '@/lib/sub2api/client';
+import { computeValidityDays, type ValidityUnit } from '@/lib/subscription-utils';
 import { Prisma } from '@prisma/client';
 import { deriveOrderState, isRefundStatus } from './status';
 import { pickLocaleText, type Locale } from '@/lib/locale';
@@ -56,7 +57,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   const orderType = input.orderType ?? 'balance';
 
   // ── 订阅订单前置校验 ──
-  let subscriptionPlan: { id: string; groupId: number; price: Prisma.Decimal; validityDays: number; name: string } | null = null;
+  let subscriptionPlan: { id: string; groupId: number; price: Prisma.Decimal; validityDays: number; validityUnit: string; name: string } | null = null;
   if (orderType === 'subscription') {
     if (!input.planId) {
       throw new OrderError('INVALID_INPUT', message(locale, '订阅订单必须指定套餐', 'Subscription order requires a plan'), 400);
@@ -180,7 +181,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         orderType,
         planId: subscriptionPlan?.id ?? null,
         subscriptionGroupId: subscriptionPlan?.groupId ?? null,
-        subscriptionDays: subscriptionPlan?.validityDays ?? null,
+        subscriptionDays: subscriptionPlan
+          ? computeValidityDays(subscriptionPlan.validityDays, subscriptionPlan.validityUnit as ValidityUnit)
+          : null,
       },
     });
 
@@ -598,12 +601,16 @@ export async function executeSubscriptionFulfillment(orderId: string): Promise<v
       throw new Error(`Subscription group ${order.subscriptionGroupId} no longer exists or inactive`);
     }
 
-    await assignSubscription(
+    await createAndRedeem(
+      order.rechargeCode,
+      Number(order.amount),
       order.userId,
-      order.subscriptionGroupId,
-      order.subscriptionDays,
       `sub2apipay subscription order:${orderId}`,
-      `sub2apipay:subscription:${order.rechargeCode}`,
+      {
+        type: 'subscription',
+        groupId: order.subscriptionGroupId,
+        validityDays: order.subscriptionDays,
+      },
     );
 
     await prisma.order.updateMany({
