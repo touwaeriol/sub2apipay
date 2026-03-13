@@ -33,7 +33,7 @@ Sub2ApiPay is a self-hosted payment gateway built for the [Sub2API](https://sub2
 - **Bilingual** — Automatic Chinese/English interface adaptation
 - **Admin Panel** — Dashboard, order management (pagination/filtering/retry/refund), channel & subscription management
 
-> **EasyPay Recommendation**: We personally recommend [ZPay](https://z-pay.cn/?uid=23808) as an EasyPay provider (referral link — feel free to remove). ZPay supports **individual users** (no business license) with a daily limit of ¥10,000; business license holders have no limit. Always choose providers where funds go through official Alipay/WeChat Pay channels rather than third-party collection. Please evaluate the security, reliability, and compliance of any third-party payment provider on your own — this project does not endorse or guarantee any specific provider.
+> **EasyPay Recommendation**: We personally recommend [ZPay](https://z-pay.cn/?uid=23808) as an EasyPay provider (referral link — feel free to remove). ZPay supports **individual users** (no business license) with a daily limit of ¥10,000; business license holders have no limit. Please evaluate the security, reliability, and compliance of any third-party payment provider on your own — this project does not endorse or guarantee any specific provider.
 
 <details>
 <summary>ZPay Registration QR Code</summary>
