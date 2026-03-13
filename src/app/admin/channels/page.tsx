@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import PayPageLayout from '@/components/PayPageLayout';
 import { resolveLocale, type Locale } from '@/lib/locale';
+import { PlatformBadge, getPlatformStyle } from '@/lib/platform-style';
 
 // ── Types ──
 
@@ -44,15 +45,7 @@ interface ChannelFormData {
   enabled: boolean;
 }
 
-const PLATFORMS = ['claude', 'openai', 'gemini', 'codex', 'sora'] as const;
-
-const PLATFORM_COLORS: Record<string, { bg: string; text: string }> = {
-  claude: { bg: 'bg-orange-100 dark:bg-orange-900/40', text: 'text-orange-700 dark:text-orange-300' },
-  openai: { bg: 'bg-green-100 dark:bg-green-900/40', text: 'text-green-700 dark:text-green-300' },
-  gemini: { bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-700 dark:text-blue-300' },
-  codex: { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300' },
-  sora: { bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-700 dark:text-pink-300' },
-};
+const PLATFORMS = ['claude', 'anthropic', 'openai', 'gemini', 'codex', 'sora', 'antigravity'] as const;
 
 // ── i18n ──
 
@@ -706,7 +699,6 @@ function ChannelsContent() {
             </thead>
             <tbody>
               {channels.map((channel) => {
-                const pc = PLATFORM_COLORS[channel.platform] ?? PLATFORM_COLORS.claude;
                 return (
                   <tr
                     key={channel.id}
@@ -722,11 +714,7 @@ function ChannelsContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${isDark ? pc.bg.replace('dark:', '') : pc.bg.split(' ')[0]} ${isDark ? pc.text.replace('dark:', '') : pc.text.split(' ')[0]}`}
-                      >
-                        {channel.platform}
-                      </span>
+                      <PlatformBadge platform={channel.platform} />
                     </td>
                     <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                       {channel.rateMultiplier}x
@@ -849,7 +837,7 @@ function ChannelsContent() {
                 >
                   {PLATFORMS.map((p) => (
                     <option key={p} value={p}>
-                      {p}
+                      {getPlatformStyle(p).label || p}
                     </option>
                   ))}
                 </select>
@@ -1019,16 +1007,7 @@ function ChannelsContent() {
                           <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                             #{group.id}
                           </span>
-                          {(() => {
-                            const gpc = PLATFORM_COLORS[group.platform] ?? PLATFORM_COLORS.claude;
-                            return (
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isDark ? gpc.bg.replace('dark:', '') : gpc.bg.split(' ')[0]} ${isDark ? gpc.text.replace('dark:', '') : gpc.text.split(' ')[0]}`}
-                              >
-                                {group.platform}
-                              </span>
-                            );
-                          })()}
+                          <PlatformBadge platform={group.platform} className="text-[10px]" />
                           {alreadyImported && (
                             <span className="text-[10px] text-amber-500 font-medium">{t.syncAlreadyExists}</span>
                           )}
