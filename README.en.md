@@ -116,7 +116,7 @@ ENABLED_PAYMENT_TYPES=alipay,wxpay
 
 #### EasyPay (Alipay / WeChat Pay)
 
-Any payment provider compatible with the **EasyPay protocol** can be used, such as [ZPay](https://z-pay.cn/?uid=23808) (`https://z-pay.cn/?uid=23808`) (this link contains the author's referral code — feel free to remove it).
+Any payment provider compatible with the **EasyPay protocol** can be used, such as [ZPay](https://z-pay.cn/?uid=23808) (`https://z-pay.cn/?uid=23808`) (this link contains the author's referral code — feel free to remove it). ZPay supports **individual users** (no business license required) with a daily transaction limit of ¥10,000; users with a business license have no transaction limits.
 
 <details>
 <summary>ZPay Registration QR Code</summary>
@@ -126,6 +126,8 @@ Any payment provider compatible with the **EasyPay protocol** can be used, such 
 </details>
 
 > **Disclaimer**: Please evaluate the security, reliability, and compliance of any third-party payment provider on your own. This project does not endorse or guarantee any specific provider.
+>
+> **⚠️ Security Warning**: When using third-party aggregated payment services, always choose providers where **funds are routed through official Alipay/WeChat Pay channels rather than third-party collection**, to avoid the risk of fund misappropriation.
 
 | Variable              | Description                                                      |
 | --------------------- | ---------------------------------------------------------------- |
