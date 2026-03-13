@@ -5,8 +5,7 @@ import { Suspense } from 'react';
 import { resolveLocale } from '@/lib/locale';
 
 const NAV_ITEMS = [
-  { path: '/admin', label: { zh: '总览', en: 'Overview' } },
-  { path: '/admin/orders', label: { zh: '订单管理', en: 'Orders' } },
+  { path: '/admin', label: { zh: '订单管理', en: 'Orders' } },
   { path: '/admin/dashboard', label: { zh: '数据概览', en: 'Dashboard' } },
   { path: '/admin/channels', label: { zh: '渠道管理', en: 'Channels' } },
   { path: '/admin/subscriptions', label: { zh: '订阅管理', en: 'Subscriptions' } },

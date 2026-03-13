@@ -143,7 +143,7 @@ function DashboardContent() {
               {text.daySuffix}
             </button>
           ))}
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
+          <a href={`/admin?${navParams}`} className={btnBase}>
             {text.orders}
           </a>
           <button type="button" onClick={fetchData} className={btnBase}>

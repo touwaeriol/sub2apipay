@@ -502,7 +502,7 @@ function ChannelsContent() {
       locale={locale}
       actions={
         <>
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
+          <a href={`/admin?${navParams}`} className={btnBase}>
             {t.orders}
           </a>
           <button type="button" onClick={fetchChannels} className={btnBase}>

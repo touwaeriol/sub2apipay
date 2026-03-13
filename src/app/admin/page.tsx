@@ -1,54 +1,49 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import OrderTable from '@/components/admin/OrderTable';
+import OrderDetail from '@/components/admin/OrderDetail';
+import PaginationBar from '@/components/PaginationBar';
 import PayPageLayout from '@/components/PayPageLayout';
-import { resolveLocale } from '@/lib/locale';
+import { resolveLocale, type Locale } from '@/lib/locale';
 
-const MODULES = [
-  {
-    path: '/admin/orders',
-    label: { zh: '订单管理', en: 'Order Management' },
-    desc: { zh: '查看和管理所有充值订单', en: 'View and manage all recharge orders' },
-    icon: (
-      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/admin/dashboard',
-    label: { zh: '数据概览', en: 'Dashboard' },
-    desc: { zh: '收入统计与订单趋势', en: 'Revenue statistics and order trends' },
-    icon: (
-      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/admin/channels',
-    label: { zh: '渠道管理', en: 'Channel Management' },
-    desc: { zh: '配置 API 渠道与倍率', en: 'Configure API channels and rate multipliers' },
-    icon: (
-      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m-3.75 0h7.5m-7.5 0H3m4.5 0a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m7.5-12a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m-3.75 0h7.5m-7.5 0H3m4.5 0a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3M18 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m-3.75 0h7.5M14.25 16.5H21m-4.5 0a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3" />
-      </svg>
-    ),
-  },
-  {
-    path: '/admin/subscriptions',
-    label: { zh: '订阅管理', en: 'Subscription Management' },
-    desc: { zh: '管理订阅套餐与用户订阅', en: 'Manage subscription plans and user subscriptions' },
-    icon: (
-      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-      </svg>
-    ),
-  },
-];
+interface AdminOrder {
+  id: string;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  userNotes: string | null;
+  amount: number;
+  status: string;
+  paymentType: string;
+  createdAt: string;
+  paidAt: string | null;
+  completedAt: string | null;
+  failedReason: string | null;
+  expiresAt: string;
+  srcHost: string | null;
+}
 
-function AdminOverviewContent() {
+interface AdminOrderDetail extends AdminOrder {
+  rechargeCode: string;
+  paymentTradeNo: string | null;
+  refundAmount: number | null;
+  refundReason: string | null;
+  refundAt: string | null;
+  forceRefund: boolean;
+  failedAt: string | null;
+  updatedAt: string;
+  clientIp: string | null;
+  srcHost: string | null;
+  srcUrl: string | null;
+  paymentSuccess?: boolean;
+  rechargeSuccess?: boolean;
+  rechargeStatus?: string;
+  auditLogs: { id: string; action: string; detail: string | null; operator: string | null; createdAt: string }[];
+}
+
+function AdminContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const theme = searchParams.get('theme') === 'dark' ? 'dark' : 'light';
@@ -62,15 +57,105 @@ function AdminOverviewContent() {
       ? {
           missingToken: 'Missing admin token',
           missingTokenHint: 'Please access the admin page from the Sub2API platform.',
-          title: 'Admin Panel',
-          subtitle: 'Manage orders, analytics, channels and subscriptions',
+          invalidToken: 'Invalid admin token',
+          requestFailed: 'Request failed',
+          loadOrdersFailed: 'Failed to load orders',
+          retryConfirm: 'Retry recharge for this order?',
+          retryFailed: 'Retry failed',
+          retryRequestFailed: 'Retry request failed',
+          cancelConfirm: 'Cancel this order?',
+          cancelFailed: 'Cancel failed',
+          cancelRequestFailed: 'Cancel request failed',
+          loadDetailFailed: 'Failed to load order details',
+          title: 'Order Management',
+          subtitle: 'View and manage all recharge orders',
+          dashboard: 'Dashboard',
+          refresh: 'Refresh',
+          loading: 'Loading...',
+          statuses: {
+            '': 'All',
+            PENDING: 'Pending',
+            PAID: 'Paid',
+            RECHARGING: 'Recharging',
+            COMPLETED: 'Completed',
+            EXPIRED: 'Expired',
+            CANCELLED: 'Cancelled',
+            FAILED: 'Recharge failed',
+            REFUNDED: 'Refunded',
+          },
         }
       : {
           missingToken: '缺少管理员凭证',
           missingTokenHint: '请从 Sub2API 平台正确访问管理页面',
-          title: '管理后台',
-          subtitle: '订单、数据、渠道与订阅的统一管理入口',
+          invalidToken: '管理员凭证无效',
+          requestFailed: '请求失败',
+          loadOrdersFailed: '加载订单列表失败',
+          retryConfirm: '确认重试充值？',
+          retryFailed: '重试失败',
+          retryRequestFailed: '重试请求失败',
+          cancelConfirm: '确认取消该订单？',
+          cancelFailed: '取消失败',
+          cancelRequestFailed: '取消请求失败',
+          loadDetailFailed: '加载订单详情失败',
+          title: '订单管理',
+          subtitle: '查看和管理所有充值订单',
+          dashboard: '数据概览',
+          refresh: '刷新',
+          loading: '加载中...',
+          statuses: {
+            '': '全部',
+            PENDING: '待支付',
+            PAID: '已支付',
+            RECHARGING: '充值中',
+            COMPLETED: '已完成',
+            EXPIRED: '已超时',
+            CANCELLED: '已取消',
+            FAILED: '充值失败',
+            REFUNDED: '已退款',
+          },
         };
+
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [detailOrder, setDetailOrder] = useState<AdminOrderDetail | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ token, page: String(page), page_size: String(pageSize) });
+      if (statusFilter) params.set('status', statusFilter);
+
+      const res = await fetch(`/api/admin/orders?${params}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError(text.invalidToken);
+          return;
+        }
+        throw new Error(text.requestFailed);
+      }
+
+      const data = await res.json();
+      setOrders(data.orders);
+      setTotal(data.total);
+      setTotalPages(data.total_pages);
+    } catch {
+      setError(text.loadOrdersFailed);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, page, pageSize, statusFilter]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   if (!token) {
     return (
@@ -83,67 +168,168 @@ function AdminOverviewContent() {
     );
   }
 
+  const handleRetry = async (orderId: string) => {
+    if (!confirm(text.retryConfirm)) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/retry?token=${token}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        setError(data.error || text.retryFailed);
+      }
+    } catch {
+      setError(text.retryRequestFailed);
+    }
+  };
+
+  const handleCancel = async (orderId: string) => {
+    if (!confirm(text.cancelConfirm)) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/cancel?token=${token}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        fetchOrders();
+      } else {
+        const data = await res.json();
+        setError(data.error || text.cancelFailed);
+      }
+    } catch {
+      setError(text.cancelRequestFailed);
+    }
+  };
+
+  const handleViewDetail = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}?token=${token}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDetailOrder(data);
+      }
+    } catch {
+      setError(text.loadDetailFailed);
+    }
+  };
+
+  const statuses = ['', 'PENDING', 'PAID', 'RECHARGING', 'COMPLETED', 'EXPIRED', 'CANCELLED', 'FAILED', 'REFUNDED'];
+  const statusLabels: Record<string, string> = text.statuses;
+
   const navParams = new URLSearchParams();
   if (token) navParams.set('token', token);
   if (locale === 'en') navParams.set('lang', 'en');
   if (isDark) navParams.set('theme', 'dark');
   if (isEmbedded) navParams.set('ui_mode', 'embedded');
 
+  const btnBase = [
+    'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+    isDark
+      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+  ].join(' ');
+
   return (
-    <PayPageLayout isDark={isDark} isEmbedded={isEmbedded} maxWidth="full" title={text.title} subtitle={text.subtitle} locale={locale}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {MODULES.map((mod) => (
-          <a
-            key={mod.path}
-            href={`${mod.path}?${navParams}`}
+    <PayPageLayout
+      isDark={isDark}
+      isEmbedded={isEmbedded}
+      maxWidth="full"
+      title={text.title}
+      subtitle={text.subtitle}
+      locale={locale}
+      actions={
+        <>
+          <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
+            {text.dashboard}
+          </a>
+          <button type="button" onClick={fetchOrders} className={btnBase}>
+            {text.refresh}
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div
+          className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}
+        >
+          {error}
+          <button onClick={() => setError('')} className="ml-2 opacity-60 hover:opacity-100">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {statuses.map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              setStatusFilter(s);
+              setPage(1);
+            }}
             className={[
-              'group flex items-start gap-4 rounded-xl border p-5 transition-all',
-              isDark
-                ? 'border-slate-700 bg-slate-800/70 hover:border-indigo-500/50 hover:bg-slate-800'
-                : 'border-slate-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md',
+              'rounded-full px-3 py-1 text-sm transition-colors',
+              statusFilter === s
+                ? isDark
+                  ? 'bg-indigo-500/30 text-indigo-200 ring-1 ring-indigo-400/40'
+                  : 'bg-blue-600 text-white'
+                : isDark
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
             ].join(' ')}
           >
-            <div
-              className={[
-                'flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-colors',
-                isDark
-                  ? 'bg-slate-700 text-slate-300 group-hover:bg-indigo-500/20 group-hover:text-indigo-300'
-                  : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600',
-              ].join(' ')}
-            >
-              {mod.icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3
-                className={[
-                  'text-base font-semibold transition-colors',
-                  isDark ? 'text-slate-100 group-hover:text-indigo-200' : 'text-slate-900 group-hover:text-blue-700',
-                ].join(' ')}
-              >
-                {mod.label[locale]}
-              </h3>
-              <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{mod.desc[locale]}</p>
-            </div>
-            <svg
-              className={[
-                'mt-1 h-5 w-5 shrink-0 transition-transform group-hover:translate-x-0.5',
-                isDark ? 'text-slate-600' : 'text-slate-300',
-              ].join(' ')}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </a>
+            {statusLabels[s]}
+          </button>
         ))}
       </div>
+
+      {/* Table */}
+      <div
+        className={[
+          'rounded-xl border',
+          isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
+        {loading ? (
+          <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{text.loading}</div>
+        ) : (
+          <OrderTable
+            orders={orders}
+            onRetry={handleRetry}
+            onCancel={handleCancel}
+            onViewDetail={handleViewDetail}
+            dark={isDark}
+            locale={locale}
+          />
+        )}
+      </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+        locale={locale}
+        isDark={isDark}
+      />
+
+      {/* Order Detail */}
+      {detailOrder && (
+        <OrderDetail order={detailOrder} onClose={() => setDetailOrder(null)} dark={isDark} locale={locale} />
+      )}
     </PayPageLayout>
   );
 }
 
-function AdminOverviewFallback() {
+function AdminPageFallback() {
   const searchParams = useSearchParams();
   const locale = resolveLocale(searchParams.get('lang'));
 
@@ -156,8 +342,8 @@ function AdminOverviewFallback() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={<AdminOverviewFallback />}>
-      <AdminOverviewContent />
+    <Suspense fallback={<AdminPageFallback />}>
+      <AdminContent />
     </Suspense>
   );
 }

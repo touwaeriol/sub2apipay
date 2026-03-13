@@ -595,7 +595,7 @@ function SubscriptionsContent() {
       locale={locale}
       actions={
         <>
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
+          <a href={`/admin?${navParams}`} className={btnBase}>
             {t.orders}
           </a>
           <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
