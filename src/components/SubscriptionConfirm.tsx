@@ -62,11 +62,11 @@ export default function SubscriptionConfirm({
       {/* Plan info card */}
       <div
         className={[
-          'rounded-xl border p-4',
+          'rounded-xl border p-4 space-y-3',
           isDark ? 'border-slate-700 bg-slate-800/80' : 'border-slate-200 bg-slate-50',
         ].join(' ')}
       >
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={['text-base font-semibold', isDark ? 'text-slate-100' : 'text-slate-900'].join(' ')}>
               {plan.name}
@@ -81,6 +81,24 @@ export default function SubscriptionConfirm({
             </span>
           </div>
         </div>
+
+        {/* Platform & Rate tags */}
+        {(plan.platform || plan.rateMultiplier != null) && (
+          <div className={['flex flex-wrap gap-2 text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+            {plan.platform && (
+              <span className={['inline-flex items-center rounded-md px-2 py-0.5', isDark ? 'bg-slate-700/60' : 'bg-slate-100'].join(' ')}>
+                {pickLocaleText(locale, '平台', 'Platform')}: {plan.platform}
+              </span>
+            )}
+            {plan.rateMultiplier != null && (
+              <span className={['inline-flex items-center rounded-md px-2 py-0.5', isDark ? 'bg-slate-700/60' : 'bg-slate-100'].join(' ')}>
+                {pickLocaleText(locale, '倍率', 'Rate')}: {plan.rateMultiplier}x
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Features */}
         {plan.features.length > 0 && (
           <ul className="space-y-1">
             {plan.features.map((feature) => (
@@ -92,6 +110,24 @@ export default function SubscriptionConfirm({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Usage limits */}
+        {plan.limits && (plan.limits.daily_limit_usd != null || plan.limits.weekly_limit_usd != null || plan.limits.monthly_limit_usd != null) && (
+          <div className={['rounded-lg p-2.5 text-xs', isDark ? 'bg-slate-900/60 text-slate-400' : 'bg-white/80 text-slate-500'].join(' ')}>
+            <p className="mb-1 font-medium">{pickLocaleText(locale, '用量限制', 'Usage Limits')}</p>
+            <div className="space-y-0.5">
+              {plan.limits.daily_limit_usd != null && (
+                <p>{pickLocaleText(locale, `每日: $${plan.limits.daily_limit_usd}`, `Daily: $${plan.limits.daily_limit_usd}`)}</p>
+              )}
+              {plan.limits.weekly_limit_usd != null && (
+                <p>{pickLocaleText(locale, `每周: $${plan.limits.weekly_limit_usd}`, `Weekly: $${plan.limits.weekly_limit_usd}`)}</p>
+              )}
+              {plan.limits.monthly_limit_usd != null && (
+                <p>{pickLocaleText(locale, `每月: $${plan.limits.monthly_limit_usd}`, `Monthly: $${plan.limits.monthly_limit_usd}`)}</p>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

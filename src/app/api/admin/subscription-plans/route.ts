@@ -16,8 +16,9 @@ export async function GET(request: NextRequest) {
       plans.map(async (plan) => {
         let groupExists = false;
         let groupName: string | null = null;
+        let group: Awaited<ReturnType<typeof getGroup>> | null = null;
         try {
-          const group = await getGroup(plan.groupId);
+          group = await getGroup(plan.groupId);
           groupExists = group !== null;
           groupName = group?.name ?? null;
         } catch {
@@ -37,6 +38,12 @@ export async function GET(request: NextRequest) {
           sortOrder: plan.sortOrder,
           enabled: plan.forSale,
           groupExists,
+          groupPlatform: group?.platform ?? null,
+          groupRateMultiplier: group?.rate_multiplier ?? null,
+          groupDailyLimit: group?.daily_limit_usd ?? null,
+          groupWeeklyLimit: group?.weekly_limit_usd ?? null,
+          groupMonthlyLimit: group?.monthly_limit_usd ?? null,
+          groupModelScopes: group?.supported_model_scopes ?? null,
           createdAt: plan.createdAt,
           updatedAt: plan.updatedAt,
         };
@@ -61,8 +68,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '缺少必填字段: group_id, name, price' }, { status: 400 });
     }
 
-    if (typeof price !== 'number' || price <= 0) {
-      return NextResponse.json({ error: 'price 必须是正数' }, { status: 400 });
+    if (typeof price !== 'number' || price <= 0 || price > 99999999.99) {
+      return NextResponse.json({ error: 'price 必须是 0.01 ~ 99999999.99 之间的数值' }, { status: 400 });
+    }
+    if (original_price !== undefined && original_price !== null && (typeof original_price !== 'number' || original_price <= 0 || original_price > 99999999.99)) {
+      return NextResponse.json({ error: 'original_price 必须是 0.01 ~ 99999999.99 之间的数值' }, { status: 400 });
     }
     if (validity_days !== undefined && (!Number.isInteger(validity_days) || validity_days <= 0)) {
       return NextResponse.json({ error: 'validity_days 必须是正整数' }, { status: 400 });

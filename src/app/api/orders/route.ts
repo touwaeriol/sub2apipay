@@ -8,7 +8,7 @@ import { handleApiError } from '@/lib/utils/api';
 
 const createOrderSchema = z.object({
   token: z.string().min(1),
-  amount: z.number().positive(),
+  amount: z.number().positive().max(99999999.99),
   payment_type: z.string().min(1),
   src_host: z.string().max(253).optional(),
   src_url: z.string().max(2048).optional(),

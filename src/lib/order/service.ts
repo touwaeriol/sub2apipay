@@ -15,6 +15,8 @@ import { getBizDayStartUTC } from '@/lib/time/biz-day';
 import { buildOrderResultUrl, createOrderStatusAccessToken } from '@/lib/order/status-access';
 
 const MAX_PENDING_ORDERS = 3;
+/** Decimal(10,2) 允许的最大金额 */
+export const MAX_AMOUNT = 99999999.99;
 
 function message(locale: Locale, zh: string, en: string): string {
   return pickLocaleText(locale, zh, en);
@@ -58,6 +60,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   // ── 订阅订单前置校验 ──
   let subscriptionPlan: { id: string; groupId: number; price: Prisma.Decimal; validityDays: number; validityUnit: string; name: string } | null = null;
+  let subscriptionGroupName = '';
   if (orderType === 'subscription') {
     if (!input.planId) {
       throw new OrderError('INVALID_INPUT', message(locale, '订阅订单必须指定套餐', 'Subscription order requires a plan'), 400);
@@ -75,6 +78,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         410,
       );
     }
+    subscriptionGroupName = group?.name || plan.name;
     subscriptionPlan = plan;
     // 订阅订单金额使用服务端套餐价格，不信任客户端
     input.amount = Number(plan.price);
@@ -216,7 +220,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       orderId: order.id,
       amount: payAmountNum,
       paymentType: input.paymentType,
-      subject: `${env.PRODUCT_NAME} ${payAmountStr} CNY`,
+      subject: subscriptionPlan
+        ? `Sub2API 订阅 ${subscriptionGroupName || subscriptionPlan.name}`
+        : `${env.PRODUCT_NAME} ${payAmountStr} CNY`,
       notifyUrl,
       returnUrl,
       clientIp: input.clientIp,

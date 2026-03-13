@@ -21,6 +21,12 @@ interface SubscriptionPlan {
   sortOrder: number;
   enabled: boolean;
   groupExists: boolean;
+  groupPlatform: string | null;
+  groupRateMultiplier: number | null;
+  groupDailyLimit: number | null;
+  groupWeeklyLimit: number | null;
+  groupMonthlyLimit: number | null;
+  groupModelScopes: string[] | null;
 }
 
 interface Sub2ApiGroup {
@@ -129,6 +135,14 @@ function buildText(locale: Locale) {
         unlimited: 'Unlimited',
         resetIn: 'Reset in',
         noGroup: 'Unknown Group',
+        groupInfo: 'Sub2API Group Info',
+        groupInfoReadonly: '(read-only, from Sub2API)',
+        platform: 'Platform',
+        rateMultiplier: 'Rate',
+        dailyLimit: 'Daily Limit',
+        weeklyLimit: 'Weekly Limit',
+        monthlyLimit: 'Monthly Limit',
+        modelScopes: 'Models',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -201,6 +215,14 @@ function buildText(locale: Locale) {
         unlimited: '无限制',
         resetIn: '重置于',
         noGroup: '未知分组',
+        groupInfo: 'Sub2API 分组信息',
+        groupInfoReadonly: '（只读，来自 Sub2API）',
+        platform: '平台',
+        rateMultiplier: '倍率',
+        dailyLimit: '日限额',
+        weeklyLimit: '周限额',
+        monthlyLimit: '月限额',
+        modelScopes: '模型',
       };
 }
 
@@ -679,115 +701,182 @@ function SubscriptionsContent() {
             </button>
           </div>
 
-          {/* Plans table */}
-          <div className={tableWrapCls}>
-            {plansLoading ? (
-              <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.loading}</div>
-            ) : plans.length === 0 ? (
-              <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.noPlans}</div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className={`border-b ${rowBorderCls}`}>
-                    <th className={thCls}>{t.colName}</th>
-                    <th className={thCls}>{t.colGroup}</th>
-                    <th className={thCls}>{t.colPrice}</th>
-                    <th className={thCls}>{t.colOriginalPrice}</th>
-                    <th className={thCls}>{t.colValidDays}</th>
-                    <th className={thCls}>{t.colEnabled}</th>
-                    <th className={thCls}>{t.colGroupStatus}</th>
-                    <th className={thCls}>{t.colActions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plans.map((plan) => (
-                    <tr key={plan.id} className={`border-b ${rowBorderCls} last:border-b-0`}>
-                      <td className={tdCls}>{plan.name}</td>
-                      <td className={tdCls}>
-                        <span className="font-mono text-xs">{plan.groupId}</span>
-                        {plan.groupName && (
-                          <span className={`ml-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            ({plan.groupName})
-                          </span>
-                        )}
-                      </td>
-                      <td className={tdCls}>{plan.price.toFixed(2)}</td>
-                      <td className={tdCls}>
-                        {plan.originalPrice != null ? plan.originalPrice.toFixed(2) : '-'}
-                      </td>
-                      <td className={tdCls}>
-                        {plan.validDays}{' '}
-                        {plan.validityUnit === 'month'
-                          ? t.unitMonth
-                          : plan.validityUnit === 'week'
-                            ? t.unitWeek
-                            : t.unitDay}
-                      </td>
-                      <td className={tdCls}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleEnabled(plan)}
-                          className={[
-                            'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                            plan.enabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
-                          ].join(' ')}
-                        >
-                          <span
-                            className={[
-                              'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                              plan.enabled ? 'translate-x-4.5' : 'translate-x-0.5',
-                            ].join(' ')}
-                          />
-                        </button>
-                      </td>
-                      <td className={tdCls}>
+          {/* Plans cards */}
+          {plansLoading ? (
+            <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.loading}</div>
+          ) : plans.length === 0 ? (
+            <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.noPlans}</div>
+          ) : (
+            <div className="space-y-4">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={[
+                    'rounded-xl border overflow-hidden',
+                    isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+                  ].join(' ')}
+                >
+                  {/* ── 套餐配置（上半部分） ── */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className={['text-base font-semibold', isDark ? 'text-slate-100' : 'text-slate-900'].join(' ')}>
+                          {plan.name}
+                        </h3>
                         <span
                           className={[
                             'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
                             plan.groupExists
-                              ? isDark
-                                ? 'bg-green-500/20 text-green-300'
-                                : 'bg-green-50 text-green-700'
-                              : isDark
-                                ? 'bg-red-500/20 text-red-300'
-                                : 'bg-red-50 text-red-600',
+                              ? isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'
+                              : isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-50 text-red-600',
                           ].join(' ')}
                         >
                           {plan.groupExists ? t.groupExists : t.groupMissing}
                         </span>
-                      </td>
-                      <td className={tdCls}>
-                        <div className="flex gap-2">
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {/* Toggle */}
+                        <div className="flex items-center gap-1.5">
+                          <span className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                            {t.colEnabled}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => openEdit(plan)}
+                            onClick={() => handleToggleEnabled(plan)}
                             className={[
-                              'rounded px-2 py-1 text-xs font-medium transition-colors',
-                              isDark
-                                ? 'text-indigo-300 hover:bg-indigo-500/20'
-                                : 'text-blue-600 hover:bg-blue-50',
+                              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                              plan.enabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
                             ].join(' ')}
                           >
-                            {t.edit}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(plan)}
-                            className={[
-                              'rounded px-2 py-1 text-xs font-medium transition-colors',
-                              isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50',
-                            ].join(' ')}
-                          >
-                            {t.delete}
+                            <span
+                              className={[
+                                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                                plan.enabled ? 'translate-x-4.5' : 'translate-x-0.5',
+                              ].join(' ')}
+                            />
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                        {/* Actions */}
+                        <button
+                          type="button"
+                          onClick={() => openEdit(plan)}
+                          className={[
+                            'rounded px-2 py-1 text-xs font-medium transition-colors',
+                            isDark ? 'text-indigo-300 hover:bg-indigo-500/20' : 'text-blue-600 hover:bg-blue-50',
+                          ].join(' ')}
+                        >
+                          {t.edit}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(plan)}
+                          className={[
+                            'rounded px-2 py-1 text-xs font-medium transition-colors',
+                            isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50',
+                          ].join(' ')}
+                        >
+                          {t.delete}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Plan fields grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>{t.colGroup}</span>
+                        <div className={isDark ? 'text-slate-200' : 'text-slate-800'}>
+                          <span className="font-mono text-xs">{plan.groupId}</span>
+                          {plan.groupName && <span className={`ml-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({plan.groupName})</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>{t.colPrice}</span>
+                        <div className={isDark ? 'text-slate-200' : 'text-slate-800'}>
+                          ¥{plan.price.toFixed(2)}
+                          {plan.originalPrice != null && (
+                            <span className={`ml-1 line-through text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                              ¥{plan.originalPrice.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>{t.colValidDays}</span>
+                        <div className={isDark ? 'text-slate-200' : 'text-slate-800'}>
+                          {plan.validDays} {plan.validityUnit === 'month' ? t.unitMonth : plan.validityUnit === 'week' ? t.unitWeek : t.unitDay}
+                        </div>
+                      </div>
+                      <div>
+                        <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>{t.fieldSortOrder}</span>
+                        <div className={isDark ? 'text-slate-200' : 'text-slate-800'}>{plan.sortOrder}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Sub2API 分组信息（嵌套只读区域） ── */}
+                  {plan.groupExists && (
+                    <div className={['border-t px-4 py-3', isDark ? 'border-slate-700 bg-slate-900/40' : 'border-slate-100 bg-slate-50/80'].join(' ')}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={['text-xs font-medium', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                          {t.groupInfo}
+                        </span>
+                        <span className={['text-[10px]', isDark ? 'text-slate-600' : 'text-slate-400'].join(' ')}>
+                          {t.groupInfoReadonly}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-xs">
+                        {plan.groupPlatform && (
+                          <div>
+                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.platform}</span>
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-600'}>{plan.groupPlatform}</div>
+                          </div>
+                        )}
+                        {plan.groupRateMultiplier != null && (
+                          <div>
+                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.rateMultiplier}</span>
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-600'}>{plan.groupRateMultiplier}x</div>
+                          </div>
+                        )}
+                        <div>
+                          <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.dailyLimit}</span>
+                          <div className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                            {plan.groupDailyLimit != null ? `$${plan.groupDailyLimit}` : t.unlimited}
+                          </div>
+                        </div>
+                        <div>
+                          <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.weeklyLimit}</span>
+                          <div className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                            {plan.groupWeeklyLimit != null ? `$${plan.groupWeeklyLimit}` : t.unlimited}
+                          </div>
+                        </div>
+                        <div>
+                          <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.monthlyLimit}</span>
+                          <div className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                            {plan.groupMonthlyLimit != null ? `$${plan.groupMonthlyLimit}` : t.unlimited}
+                          </div>
+                        </div>
+                        {plan.groupModelScopes && plan.groupModelScopes.length > 0 && (
+                          <div className="sm:col-span-3">
+                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{t.modelScopes}</span>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {plan.groupModelScopes.map((m) => (
+                                <span
+                                  key={m}
+                                  className={['inline-block rounded px-1.5 py-0.5 text-[10px]', isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'].join(' ')}
+                                >
+                                  {m}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -1035,7 +1124,8 @@ function SubscriptionsContent() {
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
+                    max="99999999.99"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
                     className={inputCls}
@@ -1047,7 +1137,8 @@ function SubscriptionsContent() {
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
+                    max="99999999.99"
                     value={formOriginalPrice}
                     onChange={(e) => setFormOriginalPrice(e.target.value)}
                     className={inputCls}

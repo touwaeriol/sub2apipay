@@ -8,6 +8,7 @@ import { formatValidityLabel, formatValiditySuffix, type ValidityUnit } from '@/
 export interface PlanInfo {
   id: string;
   groupId: number;
+  groupName: string | null;
   name: string;
   price: number;
   originalPrice: number | null;
@@ -15,6 +16,8 @@ export interface PlanInfo {
   validityUnit?: ValidityUnit;
   features: string[];
   description: string | null;
+  platform: string | null;
+  rateMultiplier: number | null;
   limits: {
     daily_limit_usd: number | null;
     weekly_limit_usd: number | null;
@@ -74,6 +77,22 @@ export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale
         <p className={['mb-3 text-sm leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
           {plan.description}
         </p>
+      )}
+
+      {/* Platform & Rate */}
+      {(plan.platform || plan.rateMultiplier != null) && (
+        <div className={['mb-3 flex flex-wrap gap-2 text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+          {plan.platform && (
+            <span className={['inline-flex items-center gap-1 rounded-md px-2 py-0.5', isDark ? 'bg-slate-700/60' : 'bg-slate-100'].join(' ')}>
+              {pickLocaleText(locale, '平台', 'Platform')}: {plan.platform}
+            </span>
+          )}
+          {plan.rateMultiplier != null && (
+            <span className={['inline-flex items-center gap-1 rounded-md px-2 py-0.5', isDark ? 'bg-slate-700/60' : 'bg-slate-100'].join(' ')}>
+              {pickLocaleText(locale, '倍率', 'Rate')}: {plan.rateMultiplier}x
+            </span>
+          )}
+        </div>
       )}
 
       {/* Features */}

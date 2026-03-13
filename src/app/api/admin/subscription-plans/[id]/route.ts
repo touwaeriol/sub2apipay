@@ -27,8 +27,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    if (body.price !== undefined && (typeof body.price !== 'number' || body.price <= 0)) {
-      return NextResponse.json({ error: 'price 必须是正数' }, { status: 400 });
+    if (body.price !== undefined && (typeof body.price !== 'number' || body.price <= 0 || body.price > 99999999.99)) {
+      return NextResponse.json({ error: 'price 必须是 0.01 ~ 99999999.99 之间的数值' }, { status: 400 });
+    }
+    if (body.original_price !== undefined && body.original_price !== null && (typeof body.original_price !== 'number' || body.original_price <= 0 || body.original_price > 99999999.99)) {
+      return NextResponse.json({ error: 'original_price 必须是 0.01 ~ 99999999.99 之间的数值' }, { status: 400 });
     }
     if (body.validity_days !== undefined && (!Number.isInteger(body.validity_days) || body.validity_days <= 0)) {
       return NextResponse.json({ error: 'validity_days 必须是正整数' }, { status: 400 });

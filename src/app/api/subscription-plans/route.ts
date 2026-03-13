@@ -24,9 +24,10 @@ export async function GET(request: NextRequest) {
     const results = await Promise.all(
       plans.map(async (plan) => {
         let groupActive = false;
+        let group: Awaited<ReturnType<typeof getGroup>> = null;
         let groupInfo: { daily_limit_usd: number | null; weekly_limit_usd: number | null; monthly_limit_usd: number | null } | null = null;
         try {
-          const group = await getGroup(plan.groupId);
+          group = await getGroup(plan.groupId);
           groupActive = group !== null && group.status === 'active';
           if (group) {
             groupInfo = {
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
         return {
           id: plan.id,
           groupId: plan.groupId,
+          groupName: group?.name ?? null,
           name: plan.name,
           description: plan.description,
           price: Number(plan.price),
@@ -51,6 +53,8 @@ export async function GET(request: NextRequest) {
           validityDays: plan.validityDays,
           validityUnit: plan.validityUnit,
           features: plan.features ? JSON.parse(plan.features) : [],
+          platform: group?.platform ?? null,
+          rateMultiplier: group?.rate_multiplier ?? null,
           limits: groupInfo,
         };
       }),
