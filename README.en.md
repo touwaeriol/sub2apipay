@@ -14,7 +14,6 @@ Sub2ApiPay is a self-hosted payment gateway built for the [Sub2API](https://sub2
 - [Environment Variables](#environment-variables)
 - [Deployment](#deployment)
 - [Sub2API Integration](#sub2api-integration)
-- [Admin Panel](#admin-panel)
 - [Payment Flow](#payment-flow)
 - [API Endpoints](#api-endpoints)
 - [Development](#development)
@@ -327,20 +326,6 @@ The admin panel is authenticated via the `token` URL parameter (set to the `ADMI
 | Subscriptions | `https://pay.example.com/admin/subscriptions` | Manage subscription plans & user subscriptions                |
 
 > **Tip**: When accessing directly (not via Sub2API), you need to manually append `?token=YOUR_ADMIN_TOKEN` to the URL. All admin pages share the same token — once you enter any page, you can navigate between modules via the sidebar.
-
----
-
-## Admin Panel
-
-Access: `https://pay.example.com/admin?token=YOUR_ADMIN_TOKEN`
-
-| Module        | Path                   | Description                                                   |
-| ------------- | ---------------------- | ------------------------------------------------------------- |
-| Overview      | `/admin`               | Aggregated entry with card-style navigation                   |
-| Orders        | `/admin/orders`        | Filter by status, paginate, view details, retry/cancel/refund |
-| Dashboard     | `/admin/dashboard`     | Revenue stats, order trends, payment method breakdown         |
-| Channels      | `/admin/channels`      | Configure API channels & rates, sync from Sub2API             |
-| Subscriptions | `/admin/subscriptions` | Manage subscription plans & user subscriptions                |
 
 ---
 
