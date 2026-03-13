@@ -17,7 +17,7 @@ interface SubscriptionPlan {
   validDays: number;
   validityUnit: 'day' | 'week' | 'month';
   features: string[];
-  groupId: string;
+  groupId: string | null;
   groupName: string | null;
   sortOrder: number;
   enabled: boolean;
@@ -427,7 +427,7 @@ function SubscriptionsContent() {
 
   const openEdit = (plan: SubscriptionPlan) => {
     setEditingPlan(plan);
-    setFormGroupId(plan.groupId);
+    setFormGroupId(plan.groupId ?? '');
     setFormName(plan.name);
     setFormDescription(plan.description ?? '');
     setFormPrice(String(plan.price));
@@ -448,11 +448,11 @@ function SubscriptionsContent() {
 
   /* --- save plan (snake_case for backend) --- */
   const handleSave = async () => {
-    if (!formName.trim() || !formPrice) return;
+    if (!formName.trim() || !formPrice || !formGroupId) return;
     setSaving(true);
     setError('');
     const body = {
-      group_id: formGroupId ? Number(formGroupId) : undefined,
+      group_id: Number(formGroupId),
       name: formName.trim(),
       description: formDescription.trim() || null,
       price: parseFloat(formPrice),
@@ -485,7 +485,9 @@ function SubscriptionsContent() {
       closeModal();
       fetchPlans();
     } catch (e) {
+      // 分组被删除等错误：刷新列表使前端状态同步
       setError(e instanceof Error ? e.message : t.saveFailed);
+      fetchPlans();
     } finally {
       setSaving(false);
     }
@@ -617,7 +619,9 @@ function SubscriptionsContent() {
 
   /* available groups for the form: only subscription type, exclude already used */
   const subscriptionGroups = groups.filter((g) => g.subscription_type === 'subscription');
-  const usedGroupIds = new Set(plans.filter((p) => p.id !== editingPlan?.id).map((p) => p.groupId));
+  const usedGroupIds = new Set(
+    plans.filter((p) => p.id !== editingPlan?.id && p.groupId != null).map((p) => p.groupId!),
+  );
   const availableGroups = subscriptionGroups.filter((g) => !usedGroupIds.has(String(g.id)));
 
   /* group id → name map (all groups, for subscription display) */
@@ -850,10 +854,18 @@ function SubscriptionsContent() {
                           {t.colGroup}
                         </span>
                         <div className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                          <span className="font-mono text-xs">{plan.groupId}</span>
-                          {plan.groupName && (
-                            <span className={`ml-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                              ({plan.groupName})
+                          {plan.groupId ? (
+                            <>
+                              <span className="font-mono text-xs">{plan.groupId}</span>
+                              {plan.groupName && (
+                                <span className={`ml-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  ({plan.groupName})
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className={`text-xs ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                              {locale === 'en' ? 'Unbound' : '未绑定'}
                             </span>
                           )}
                         </div>
@@ -1221,12 +1233,14 @@ function SubscriptionsContent() {
                       {g.name} ({g.id})
                     </option>
                   ))}
-                  {/* If editing, ensure the current group is always visible */}
-                  {editingPlan && !availableGroups.some((g) => String(g.id) === editingPlan.groupId) && (
-                    <option value={editingPlan.groupId}>
-                      {editingPlan.groupName ?? editingPlan.groupId} ({editingPlan.groupId})
-                    </option>
-                  )}
+                  {/* If editing, ensure the current group is always visible (only if still bound) */}
+                  {editingPlan &&
+                    editingPlan.groupId &&
+                    !availableGroups.some((g) => String(g.id) === editingPlan.groupId) && (
+                      <option value={editingPlan.groupId}>
+                        {editingPlan.groupName ?? editingPlan.groupId} ({editingPlan.groupId})
+                      </option>
+                    )}
                 </select>
               </div>
 
@@ -1462,7 +1476,7 @@ function SubscriptionsContent() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || !formName.trim() || !formPrice}
+                disabled={saving || !formName.trim() || !formPrice || !formGroupId}
                 className={[
                   'rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50',
                   isDark

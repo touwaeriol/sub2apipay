@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     // 并发校验每个套餐对应的 Sub2API 分组是否存在
     const results = await Promise.all(
       plans.map(async (plan) => {
+        if (plan.groupId === null) return null;
+
         let groupActive = false;
         let group: Awaited<ReturnType<typeof getGroup>> = null;
         let groupInfo: {

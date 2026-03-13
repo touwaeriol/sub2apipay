@@ -108,7 +108,7 @@ model Channel {
 // ── 订阅套餐配置 ──
 model SubscriptionPlan {
   id            String   @id @default(cuid())
-  groupId       Int      @unique @map("group_id")
+  groupId       Int?     @unique @map("group_id")
   name          String
   description   String?  @db.Text
   price         Decimal  @db.Decimal(10, 2)

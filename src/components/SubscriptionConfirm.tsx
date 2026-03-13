@@ -6,8 +6,7 @@ import type { Locale } from '@/lib/locale';
 import { pickLocaleText } from '@/lib/locale';
 import { getPaymentTypeLabel, getPaymentIconSrc } from '@/lib/pay-utils';
 import type { PlanInfo } from '@/components/SubscriptionPlanCard';
-import { formatValidityLabel } from '@/lib/subscription-utils';
-import { PlatformBadge } from '@/lib/platform-style';
+import { PlanInfoDisplay } from '@/components/SubscriptionPlanCard';
 
 interface SubscriptionConfirmProps {
   plan: PlanInfo;
@@ -29,16 +28,6 @@ export default function SubscriptionConfirm({
   locale,
 }: SubscriptionConfirmProps) {
   const [selectedPayment, setSelectedPayment] = useState(paymentTypes[0] || '');
-
-  const periodLabel = formatValidityLabel(plan.validityDays, plan.validityUnit ?? 'day', locale);
-
-  const hasLimits =
-    plan.limits &&
-    (plan.limits.daily_limit_usd !== null ||
-      plan.limits.weekly_limit_usd !== null ||
-      plan.limits.monthly_limit_usd !== null);
-
-  const isOpenAI = plan.platform?.toLowerCase() === 'openai';
 
   const handleSubmit = () => {
     if (selectedPayment && !loading) {
@@ -68,142 +57,14 @@ export default function SubscriptionConfirm({
         {pickLocaleText(locale, '确认订单', 'Confirm Order')}
       </h2>
 
-      {/* Plan detail card */}
+      {/* Plan detail card — reuse shared component */}
       <div
         className={[
-          'rounded-2xl border p-5 space-y-4',
+          'rounded-2xl border p-5',
           isDark ? 'border-slate-700 bg-slate-800/80' : 'border-slate-200 bg-white',
         ].join(' ')}
       >
-        {/* Header: Platform badge + Name + Period + messages dispatch */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {plan.platform && <PlatformBadge platform={plan.platform} />}
-          <span className={['text-lg font-bold', isDark ? 'text-slate-100' : 'text-slate-900'].join(' ')}>
-            {plan.name}
-          </span>
-          <span
-            className={[
-              'rounded-full px-2.5 py-0.5 text-xs font-medium',
-              isDark ? 'bg-emerald-900/40 text-emerald-300' : 'bg-emerald-50 text-emerald-700',
-            ].join(' ')}
-          >
-            {periodLabel}
-          </span>
-          {isOpenAI && plan.allowMessagesDispatch && (
-            <span
-              className={[
-                'rounded-full px-2 py-0.5 text-xs font-medium',
-                isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700',
-              ].join(' ')}
-            >
-              /v1/messages
-            </span>
-          )}
-        </div>
-
-        {/* Price */}
-        <div className="flex items-baseline gap-2">
-          {plan.originalPrice !== null && (
-            <span className={['text-sm line-through', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-              ¥{plan.originalPrice}
-            </span>
-          )}
-          <span className="text-2xl font-bold text-emerald-500">¥{plan.price}</span>
-        </div>
-
-        {/* Description */}
-        {plan.description && (
-          <p className={['text-sm leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-            {plan.description}
-          </p>
-        )}
-
-        {/* Rate + Limits grid */}
-        {(plan.rateMultiplier != null || hasLimits) && (
-          <div className="grid grid-cols-2 gap-3">
-            {plan.rateMultiplier != null && (
-              <div>
-                <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-                  {pickLocaleText(locale, '倍率', 'Rate')}
-                </span>
-                <div className="flex items-baseline">
-                  <span className="text-lg font-bold text-emerald-500">1</span>
-                  <span className={['mx-1 text-base', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>:</span>
-                  <span className="text-lg font-bold text-emerald-500">{plan.rateMultiplier}</span>
-                </div>
-              </div>
-            )}
-            {plan.limits?.daily_limit_usd != null && (
-              <div>
-                <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-                  {pickLocaleText(locale, '日限额', 'Daily Limit')}
-                </span>
-                <div className={['text-lg font-semibold', isDark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
-                  ${plan.limits.daily_limit_usd}
-                </div>
-              </div>
-            )}
-            {plan.limits?.weekly_limit_usd != null && (
-              <div>
-                <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-                  {pickLocaleText(locale, '周限额', 'Weekly Limit')}
-                </span>
-                <div className={['text-lg font-semibold', isDark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
-                  ${plan.limits.weekly_limit_usd}
-                </div>
-              </div>
-            )}
-            {plan.limits?.monthly_limit_usd != null && (
-              <div>
-                <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-                  {pickLocaleText(locale, '月限额', 'Monthly Limit')}
-                </span>
-                <div className={['text-lg font-semibold', isDark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
-                  ${plan.limits.monthly_limit_usd}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* OpenAI specific: default model */}
-        {isOpenAI && plan.defaultMappedModel && (
-          <div
-            className={[
-              'flex items-center justify-between rounded-lg border px-3 py-2 text-sm',
-              isDark ? 'border-green-500/30 bg-green-500/10' : 'border-green-200 bg-green-50/50',
-            ].join(' ')}
-          >
-            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              {pickLocaleText(locale, '默认模型', 'Default Model')}
-            </span>
-            <span className={['text-xs font-mono', isDark ? 'text-slate-300' : 'text-slate-700'].join(' ')}>
-              {plan.defaultMappedModel}
-            </span>
-          </div>
-        )}
-
-        {/* Features */}
-        {plan.features.length > 0 && (
-          <div>
-            <p className={['mb-2 text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-              {pickLocaleText(locale, '功能特性', 'Features')}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {plan.features.map((feature) => (
-                <span
-                  key={feature}
-                  className={[
-                    'rounded-md px-2 py-1 text-xs',
-                    isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700',
-                  ].join(' ')}
-                >
-                  {feature}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <PlanInfoDisplay plan={plan} isDark={isDark} locale={locale} />
       </div>
 
       {/* Payment method selector */}

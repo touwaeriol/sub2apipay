@@ -6,7 +6,14 @@ import { getMethodDailyLimit } from './limits';
 import { getMethodFeeRate, calculatePayAmount } from './fee';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType, PaymentNotification } from '@/lib/payment';
-import { getUser, createAndRedeem, subtractBalance, addBalance, getGroup } from '@/lib/sub2api/client';
+import {
+  getUser,
+  createAndRedeem,
+  subtractBalance,
+  addBalance,
+  getGroup,
+  getUserSubscriptions,
+} from '@/lib/sub2api/client';
 import { computeValidityDays, type ValidityUnit } from '@/lib/subscription-utils';
 import { Prisma } from '@prisma/client';
 import { deriveOrderState, isRefundStatus } from './status';
@@ -62,7 +69,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   // ── 订阅订单前置校验 ──
   let subscriptionPlan: {
     id: string;
-    groupId: number;
+    groupId: number | null;
     price: Prisma.Decimal;
     validityDays: number;
     validityUnit: string;
@@ -97,6 +104,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         'PLAN_NOT_AVAILABLE',
         message(locale, '该套餐不存在或未上架', 'Plan not found or not for sale'),
         404,
+      );
+    }
+    // 校验分组绑定有效
+    if (plan.groupId === null) {
+      throw new OrderError(
+        'GROUP_NOT_BOUND',
+        message(locale, '该套餐尚未绑定分组，无法购买', 'Plan is not bound to a group'),
+        400,
       );
     }
     // 校验 Sub2API 分组仍然存在
@@ -668,6 +683,33 @@ export async function executeSubscriptionFulfillment(orderId: string): Promise<v
       throw new Error(`Subscription group ${order.subscriptionGroupId} no longer exists or inactive`);
     }
 
+    // 检测是否续费：查找同分组的活跃订阅，决定天数计算起点
+    let validityDays = order.subscriptionDays;
+    let fulfillMethod: 'renew' | 'new' = 'new';
+    let renewedSubscriptionId: number | undefined;
+
+    const userSubs = await getUserSubscriptions(order.userId);
+    const activeSub = userSubs.find(
+      (s) => s.group_id === order.subscriptionGroupId && s.status === 'active',
+    );
+
+    if (activeSub) {
+      // 续费：从到期日往后推算天数
+      const plan = await prisma.subscriptionPlan.findFirst({
+        where: { groupId: order.subscriptionGroupId },
+        select: { validityDays: true, validityUnit: true },
+      });
+      if (plan) {
+        validityDays = computeValidityDays(
+          plan.validityDays,
+          plan.validityUnit as ValidityUnit,
+          new Date(activeSub.expires_at),
+        );
+      }
+      fulfillMethod = 'renew';
+      renewedSubscriptionId = activeSub.id;
+    }
+
     await createAndRedeem(
       order.rechargeCode,
       Number(order.amount),
@@ -676,7 +718,7 @@ export async function executeSubscriptionFulfillment(orderId: string): Promise<v
       {
         type: 'subscription',
         groupId: order.subscriptionGroupId,
-        validityDays: order.subscriptionDays,
+        validityDays,
       },
     );
 
@@ -693,6 +735,8 @@ export async function executeSubscriptionFulfillment(orderId: string): Promise<v
           groupId: order.subscriptionGroupId,
           days: order.subscriptionDays,
           amount: Number(order.amount),
+          method: fulfillMethod,
+          ...(renewedSubscriptionId && { renewedSubscriptionId }),
         }),
         operator: 'system',
       },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { prisma } from '@/lib/db';
+import { getGroup } from '@/lib/sub2api/client';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifyAdminToken(request))) return unauthorizedResponse(request);
@@ -14,6 +15,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: '订阅套餐不存在' }, { status: 404 });
     }
 
+    // 确定最终 groupId：如果传了 group_id 用传入值，否则用现有值
+    const finalGroupId = body.group_id !== undefined ? (body.group_id ? Number(body.group_id) : null) : existing.groupId;
+
+    // 必须绑定分组才能保存
+    if (finalGroupId === null || finalGroupId === undefined) {
+      return NextResponse.json({ error: '必须关联一个 Sub2API 分组' }, { status: 400 });
+    }
+
     // 如果更新了 group_id，检查唯一性
     if (body.group_id !== undefined && Number(body.group_id) !== existing.groupId) {
       const conflict = await prisma.subscriptionPlan.findUnique({
@@ -25,6 +34,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           { status: 409 },
         );
       }
+    }
+
+    // 校验分组在 Sub2API 中仍然存在
+    const group = await getGroup(finalGroupId);
+    if (!group) {
+      // 分组已被删除，自动解绑
+      await prisma.subscriptionPlan.update({
+        where: { id },
+        data: { groupId: null, forSale: false },
+      });
+      return NextResponse.json(
+        { error: '该分组在 Sub2API 中已被删除，已自动解绑，请重新选择分组' },
+        { status: 409 },
+      );
     }
 
     if (body.price !== undefined && (typeof body.price !== 'number' || body.price <= 0 || body.price > 99999999.99)) {
@@ -63,7 +86,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({
       id: plan.id,
-      groupId: String(plan.groupId),
+      groupId: plan.groupId != null ? String(plan.groupId) : null,
       groupName: null,
       name: plan.name,
       description: plan.description,

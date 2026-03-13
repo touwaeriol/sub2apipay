@@ -28,14 +28,16 @@ export interface PlanInfo {
   defaultMappedModel: string | null;
 }
 
-interface SubscriptionPlanCardProps {
+/** 套餐信息展示（Header + 价格 + 描述 + 倍率/限额 + 特性），不含操作按钮 */
+export function PlanInfoDisplay({
+  plan,
+  isDark,
+  locale,
+}: {
   plan: PlanInfo;
-  onSubscribe: (planId: string) => void;
   isDark: boolean;
   locale: Locale;
-}
-
-export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale }: SubscriptionPlanCardProps) {
+}) {
   const unit = plan.validityUnit ?? 'day';
   const periodLabel = formatValidityLabel(plan.validityDays, unit, locale);
   const periodSuffix = formatValiditySuffix(plan.validityDays, unit, locale);
@@ -51,13 +53,8 @@ export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale
   const accentCls = isDark ? ps.accent.dark : ps.accent.light;
 
   return (
-    <div
-      className={[
-        'flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-lg',
-        isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white',
-      ].join(' ')}
-    >
-      {/* Header: Platform badge + Name + Period */}
+    <>
+      {/* Header: Platform badge + Name + Period + /v1/messages */}
       <div className="mb-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {plan.platform && <PlatformBadge platform={plan.platform} />}
@@ -175,6 +172,28 @@ export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+interface SubscriptionPlanCardProps {
+  plan: PlanInfo;
+  onSubscribe: (planId: string) => void;
+  isDark: boolean;
+  locale: Locale;
+}
+
+export default function SubscriptionPlanCard({ plan, onSubscribe, isDark, locale }: SubscriptionPlanCardProps) {
+  const ps = getPlatformStyle(plan.platform ?? '');
+
+  return (
+    <div
+      className={[
+        'flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-lg',
+        isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white',
+      ].join(' ')}
+    >
+      <PlanInfoDisplay plan={plan} isDark={isDark} locale={locale} />
 
       {/* Spacer */}
       <div className="flex-1" />

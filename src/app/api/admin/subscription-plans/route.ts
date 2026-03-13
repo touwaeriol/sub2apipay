@@ -17,16 +17,30 @@ export async function GET(request: NextRequest) {
         let groupExists = false;
         let groupName: string | null = null;
         let group: Awaited<ReturnType<typeof getGroup>> | null = null;
-        try {
-          group = await getGroup(plan.groupId);
-          groupExists = group !== null;
-          groupName = group?.name ?? null;
-        } catch {
-          groupExists = false;
+
+        if (plan.groupId !== null) {
+          try {
+            group = await getGroup(plan.groupId);
+            groupExists = group !== null;
+            groupName = group?.name ?? null;
+          } catch {
+            groupExists = false;
+          }
+
+          // 分组已失效：自动清除绑定并下架
+          if (!groupExists) {
+            prisma.subscriptionPlan
+              .update({
+                where: { id: plan.id },
+                data: { groupId: null, forSale: false },
+              })
+              .catch((err) => console.error(`Failed to unbind stale group for plan ${plan.id}:`, err));
+          }
         }
+
         return {
           id: plan.id,
-          groupId: String(plan.groupId),
+          groupId: groupExists ? String(plan.groupId) : null,
           groupName,
           name: plan.name,
           description: plan.description,
@@ -36,7 +50,7 @@ export async function GET(request: NextRequest) {
           validityUnit: plan.validityUnit,
           features: plan.features ? JSON.parse(plan.features) : [],
           sortOrder: plan.sortOrder,
-          enabled: plan.forSale,
+          enabled: groupExists ? plan.forSale : false,
           groupExists,
           groupPlatform: group?.platform ?? null,
           groupRateMultiplier: group?.rate_multiplier ?? null,
