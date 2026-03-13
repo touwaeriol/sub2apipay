@@ -82,6 +82,24 @@ pnpm prisma migrate dev
 pnpm prisma migrate deploy
 ```
 
+## 数据库迁移
+
+采用 **Prisma Migrate** 版本化迁移机制（类似 Flyway / Goose）：
+
+- 迁移文件位于 `prisma/migrations/` 目录，每个迁移为带时间戳的子目录 + `migration.sql`
+- 已执行的迁移记录在数据库 `_prisma_migrations` 表中，不会重复执行
+- **容器启动时自动执行迁移**：`start.sh` 会在应用启动前运行 `prisma migrate deploy`
+- 开发时本地无数据库，**手动创建迁移目录和 SQL 文件**即可，无需 `prisma migrate dev`
+- 命名规范：`{YYYYMMDD}{序号}_描述`，如 `20260313100000_add_validity_unit`
+
+### 新增迁移的流程
+
+1. 修改 `prisma/schema.prisma`
+2. 运行 `npx prisma generate` 更新 Prisma Client
+3. 手动创建 `prisma/migrations/{timestamp}_{name}/migration.sql`
+4. 编写对应的 `ALTER TABLE` / `CREATE TABLE` SQL
+5. 部署后容器启动时自动应用
+
 ## Prisma 7 注意事项
 
 - schema 中 **不能** 写 `url = env("DATABASE_URL")`，数据源 URL 通过 `prisma.config.ts` 配置
