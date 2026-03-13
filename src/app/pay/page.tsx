@@ -130,6 +130,8 @@ function PayContent() {
   const hasChannels = channels.length > 0;
   // 是否有可售卖套餐
   const hasPlans = plans.length > 0;
+  // 是否可以充值（未禁用且有支付方式）
+  const canTopUp = !balanceDisabled && config.enabledPaymentTypes.length > 0;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -467,8 +469,8 @@ function PayContent() {
   };
 
   // ── 渲染 ──
-  // R7: 检查是否所有入口都关闭
-  const allEntriesClosed = channelsLoaded && balanceDisabled && !hasPlans;
+  // R7: 检查是否所有入口都关闭（无可用充值方式 且 无订阅套餐）
+  const allEntriesClosed = channelsLoaded && !canTopUp && !hasPlans;
   const showMainTabs = channelsLoaded && !allEntriesClosed && (hasChannels || hasPlans);
   const pageTitle = showMainTabs
     ? pickLocaleText(locale, '选择适合你的 订阅套餐', 'Choose Your Plan')
@@ -595,7 +597,7 @@ function PayContent() {
                 </svg>
               </div>
               <p className={['text-lg font-medium mb-2', isDark ? 'text-slate-200' : 'text-slate-800'].join(' ')}>
-                {pickLocaleText(locale, '充值/订阅入口已被管理员关闭', 'Recharge / Subscription entry has been closed by admin')}
+                {pickLocaleText(locale, '充值/订阅 入口未开放', 'Recharge / Subscription entry is not available')}
               </p>
               <p className={['text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
                 {pickLocaleText(locale, '如有疑问，请联系管理员', 'Please contact the administrator if you have questions')}
@@ -606,9 +608,9 @@ function PayContent() {
           {/* ── 有渠道配置：新版UI ── */}
           {channelsLoaded && showMainTabs && (activeMobileTab === 'pay' || !isMobile) && !selectedPlan && !showTopUpForm && (
             <>
-              <MainTabs activeTab={balanceDisabled ? 'subscribe' : mainTab} onTabChange={setMainTab} showSubscribeTab={hasPlans} showTopUpTab={!balanceDisabled} isDark={isDark} locale={locale} />
+              <MainTabs activeTab={!canTopUp ? 'subscribe' : mainTab} onTabChange={setMainTab} showSubscribeTab={hasPlans} showTopUpTab={canTopUp} isDark={isDark} locale={locale} />
 
-              {mainTab === 'topup' && !balanceDisabled && (
+              {mainTab === 'topup' && canTopUp && (
                 <div className="mt-6">
                   {/* 按量付费说明 banner */}
                   <div className={[
@@ -793,7 +795,7 @@ function PayContent() {
           )}
 
           {/* ── 无渠道配置：传统充值UI ── */}
-          {channelsLoaded && !showMainTabs && !balanceDisabled && config.enabledPaymentTypes.length > 0 && !selectedPlan && (
+          {channelsLoaded && !showMainTabs && canTopUp && !selectedPlan && (
             <>
               {isMobile ? (
                 activeMobileTab === 'pay' ? (
