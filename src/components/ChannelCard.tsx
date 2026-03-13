@@ -3,7 +3,7 @@
 import React from 'react';
 import type { Locale } from '@/lib/locale';
 import { pickLocaleText } from '@/lib/locale';
-import { PlatformBadge } from '@/lib/platform-style';
+import { PlatformBadge, getPlatformStyle } from '@/lib/platform-style';
 
 export interface ChannelInfo {
   id: string;
@@ -26,6 +26,8 @@ interface ChannelCardProps {
 
 export default function ChannelCard({ channel, onTopUp, isDark, locale }: ChannelCardProps) {
   const usableQuota = (1 / channel.rateMultiplier).toFixed(2);
+  const platformStyle = getPlatformStyle(channel.platform);
+  const tagCls = isDark ? platformStyle.modelTag.dark : platformStyle.modelTag.light;
 
   return (
     <div
@@ -84,12 +86,10 @@ export default function ChannelCard({ channel, onTopUp, isDark, locale }: Channe
                 key={model}
                 className={[
                   'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs',
-                  isDark
-                    ? 'border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-400'
-                    : 'border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-600',
+                  tagCls,
                 ].join(' ')}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                <span className={['h-1.5 w-1.5 rounded-full', platformStyle.modelTag.dot].join(' ')} />
                 {model}
               </span>
             ))}

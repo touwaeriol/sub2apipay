@@ -18,9 +18,9 @@ export default function MainTabs({ activeTab, onTabChange, showSubscribeTab, sho
 
   const tabs: { key: 'topup' | 'subscribe'; label: string }[] = [];
   if (showTopUpTab) {
-    tabs.push({ key: 'topup', label: pickLocaleText(locale, '按量付费', 'Pay-as-you-go') });
+    tabs.push({ key: 'topup', label: pickLocaleText(locale, '余额充值', 'Top Up') });
   }
-  tabs.push({ key: 'subscribe', label: pickLocaleText(locale, '包月套餐', 'Subscription') });
+  tabs.push({ key: 'subscribe', label: pickLocaleText(locale, '套餐订阅', 'Subscription') });
 
   // 只有一个 tab 时不显示切换器
   if (tabs.length <= 1) return null;

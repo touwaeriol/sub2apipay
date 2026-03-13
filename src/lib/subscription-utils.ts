@@ -18,34 +18,29 @@ export function computeValidityDays(value: number, unit: ValidityUnit, fromDate?
 }
 
 /**
- * 智能格式化有效期显示文本。
- * - unit=month, value=1 → 包月 / Monthly
- * - unit=month, value=3 → 包3月 / 3 Months
- * - unit=week, value=2 → 包2周 / 2 Weeks
- * - unit=day, value=30 → 包月 / Monthly (特殊处理)
- * - unit=day, value=90 → 包90天 / 90 Days
+ * 格式化有效期显示文本（配置什么就显示什么，不做转换）。
+ * - unit=month, value=1 → 1月 / 1 Month
+ * - unit=week, value=2 → 2周 / 2 Weeks
+ * - unit=day, value=30 → 30天 / 30 Days
  */
 export function formatValidityLabel(
   value: number,
   unit: ValidityUnit,
   locale: 'zh' | 'en',
 ): string {
-  if (unit === 'month') {
-    if (value === 1) return locale === 'zh' ? '包月' : 'Monthly';
-    return locale === 'zh' ? `包${value}月` : `${value} Months`;
-  }
-  if (unit === 'week') {
-    if (value === 1) return locale === 'zh' ? '包周' : 'Weekly';
-    return locale === 'zh' ? `包${value}周` : `${value} Weeks`;
-  }
-  // day
-  return locale === 'zh' ? `${value}天` : `${value} Days`;
+  const unitLabels: Record<ValidityUnit, { zh: string; en: string; enPlural: string }> = {
+    day: { zh: '天', en: 'Day', enPlural: 'Days' },
+    week: { zh: '周', en: 'Week', enPlural: 'Weeks' },
+    month: { zh: '月', en: 'Month', enPlural: 'Months' },
+  };
+  const u = unitLabels[unit];
+  if (locale === 'zh') return `${value}${u.zh}`;
+  return `${value} ${value === 1 ? u.en : u.enPlural}`;
 }
 
 /**
- * 智能格式化有效期后缀（用于价格展示）。
- * - unit=month, value=1 → /月 / /mo
- * - unit=month, value=3 → /3月 / /3mo
+ * 格式化有效期后缀（用于价格展示，配置什么就显示什么）。
+ * - unit=month, value=1 → /1月 / /1mo
  * - unit=week, value=2 → /2周 / /2wk
  * - unit=day, value=30 → /30天 / /30d
  */
@@ -54,16 +49,14 @@ export function formatValiditySuffix(
   unit: ValidityUnit,
   locale: 'zh' | 'en',
 ): string {
-  if (unit === 'month') {
-    if (value === 1) return locale === 'zh' ? '/月' : '/mo';
-    return locale === 'zh' ? `/${value}月` : `/${value}mo`;
-  }
-  if (unit === 'week') {
-    if (value === 1) return locale === 'zh' ? '/周' : '/wk';
-    return locale === 'zh' ? `/${value}周` : `/${value}wk`;
-  }
-  // day
-  return locale === 'zh' ? `/${value}天` : `/${value}d`;
+  const unitLabels: Record<ValidityUnit, { zh: string; en: string }> = {
+    day: { zh: '天', en: 'd' },
+    week: { zh: '周', en: 'wk' },
+    month: { zh: '月', en: 'mo' },
+  };
+  const u = unitLabels[unit];
+  if (locale === 'zh') return `/${value}${u.zh}`;
+  return `/${value}${u.en}`;
 }
 
 /**
