@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createOrder } from '@/lib/order/service';
 import { getEnv } from '@/lib/config';
 import { paymentRegistry } from '@/lib/payment';
+import { getEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
 import { handleApiError } from '@/lib/utils/api';
 
@@ -59,8 +60,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate payment type is enabled
-    if (!paymentRegistry.getSupportedTypes().includes(payment_type)) {
+    // Validate payment type is enabled (registry + ENABLED_PAYMENT_TYPES config)
+    const enabledTypes = await getEnabledPaymentTypes();
+    if (!enabledTypes.includes(payment_type)) {
       return NextResponse.json({ error: `不支持的支付方式: ${payment_type}` }, { status: 400 });
     }
 

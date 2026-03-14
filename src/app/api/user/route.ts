@@ -6,20 +6,8 @@ import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 import { resolveLocale } from '@/lib/locale';
 import { getSystemConfig } from '@/lib/system-config';
+import { resolveEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
 
-function resolveEnabledPaymentTypes(supportedTypes: string[], configuredTypes: string | undefined): string[] {
-  if (configuredTypes === undefined) return supportedTypes;
-
-  const configuredTypeSet = new Set(
-    configuredTypes
-      .split(',')
-      .map((type) => type.trim())
-      .filter(Boolean),
-  );
-  if (configuredTypeSet.size === 0) return supportedTypes;
-
-  return supportedTypes.filter((type) => configuredTypeSet.has(type));
-}
 
 export async function GET(request: NextRequest) {
   const locale = resolveLocale(request.nextUrl.searchParams.get('lang'));
@@ -55,14 +43,21 @@ export async function GET(request: NextRequest) {
     const env = getEnv();
     initPaymentProviders();
     const supportedTypes = paymentRegistry.getSupportedTypes();
-    const [user, configuredPaymentTypesRaw, balanceDisabledVal] = await Promise.all([
-      getUser(userId),
+
+    // getUser 与 config 查询并行；config 完成后立即启动 queryMethodLimits
+    const configPromise = Promise.all([
       getSystemConfig('ENABLED_PAYMENT_TYPES'),
       getSystemConfig('BALANCE_PAYMENT_DISABLED'),
+    ]).then(async ([configuredPaymentTypesRaw, balanceDisabledVal]) => {
+      const enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
+      const methodLimits = await queryMethodLimits(enabledTypes);
+      return { enabledTypes, methodLimits, balanceDisabled: balanceDisabledVal === 'true' };
+    });
+
+    const [user, { enabledTypes, methodLimits, balanceDisabled }] = await Promise.all([
+      getUser(userId),
+      configPromise,
     ]);
-    const enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
-    const methodLimits = await queryMethodLimits(enabledTypes);
-    const balanceDisabled = balanceDisabledVal === 'true';
 
     // 收集 sublabel 覆盖
     const sublabelOverrides: Record<string, string> = {};
