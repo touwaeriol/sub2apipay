@@ -7,6 +7,20 @@ import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 import { resolveLocale } from '@/lib/locale';
 import { getSystemConfig } from '@/lib/system-config';
 
+function resolveEnabledPaymentTypes(supportedTypes: string[], configuredTypes: string | undefined): string[] {
+  if (configuredTypes === undefined) return supportedTypes;
+
+  const configuredTypeSet = new Set(
+    configuredTypes
+      .split(',')
+      .map((type) => type.trim())
+      .filter(Boolean),
+  );
+  if (configuredTypeSet.size === 0) return supportedTypes;
+
+  return supportedTypes.filter((type) => configuredTypeSet.has(type));
+}
+
 export async function GET(request: NextRequest) {
   const locale = resolveLocale(request.nextUrl.searchParams.get('lang'));
   const userId = Number(request.nextUrl.searchParams.get('user_id'));
@@ -40,12 +54,14 @@ export async function GET(request: NextRequest) {
 
     const env = getEnv();
     initPaymentProviders();
-    const enabledTypes = paymentRegistry.getSupportedTypes();
-    const [user, methodLimits, balanceDisabledVal] = await Promise.all([
+    const supportedTypes = paymentRegistry.getSupportedTypes();
+    const [user, configuredPaymentTypesRaw, balanceDisabledVal] = await Promise.all([
       getUser(userId),
-      queryMethodLimits(enabledTypes),
+      getSystemConfig('ENABLED_PAYMENT_TYPES'),
       getSystemConfig('BALANCE_PAYMENT_DISABLED'),
     ]);
+    const enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
+    const methodLimits = await queryMethodLimits(enabledTypes);
     const balanceDisabled = balanceDisabledVal === 'true';
 
     // 收集 sublabel 覆盖
