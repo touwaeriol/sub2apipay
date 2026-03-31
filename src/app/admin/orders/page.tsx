@@ -74,10 +74,6 @@ function AdminContent() {
           loadDetailFailed: 'Failed to load order details',
           title: 'Order Management',
           subtitle: 'View and manage all recharge orders',
-          dashboard: 'Dashboard',
-          navPaymentConfig: 'Payment Config',
-          navChannels: 'Channels',
-          navSubscriptions: 'Subscriptions',
           refresh: 'Refresh',
           loading: 'Loading...',
           orderTypes: {
@@ -112,10 +108,6 @@ function AdminContent() {
           loadDetailFailed: '加载订单详情失败',
           title: '订单管理',
           subtitle: '查看和管理所有充值订单',
-          dashboard: '数据概览',
-          navPaymentConfig: '支付配置',
-          navChannels: '渠道管理',
-          navSubscriptions: '订阅管理',
           refresh: '刷新',
           loading: '加载中...',
           orderTypes: {
@@ -242,12 +234,6 @@ function AdminContent() {
   const orderTypes = ['', 'balance', 'subscription'];
   const orderTypeLabels: Record<string, string> = text.orderTypes;
 
-  const navParams = new URLSearchParams();
-  if (token) navParams.set('token', token);
-  if (locale === 'en') navParams.set('lang', 'en');
-  if (isDark) navParams.set('theme', 'dark');
-  if (isEmbedded) navParams.set('ui_mode', 'embedded');
-
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
     isDark
@@ -265,18 +251,6 @@ function AdminContent() {
       locale={locale}
       actions={
         <>
-          <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
-            {text.dashboard}
-          </a>
-          <a href={`/admin/payment-config?${navParams}`} className={btnBase}>
-            {text.navPaymentConfig}
-          </a>
-          <a href={`/admin/channels?${navParams}`} className={btnBase}>
-            {text.navChannels}
-          </a>
-          <a href={`/admin/subscriptions?${navParams}`} className={btnBase}>
-            {text.navSubscriptions}
-          </a>
           <button type="button" onClick={fetchOrders} className={btnBase}>
             {text.refresh}
           </button>

@@ -52,10 +52,6 @@ function DashboardContent() {
           title: 'Dashboard',
           subtitle: 'Recharge order analytics and insights',
           daySuffix: 'd',
-          navOrders: 'Orders',
-          navPaymentConfig: 'Payment Config',
-          navChannels: 'Channels',
-          navSubscriptions: 'Subscriptions',
           refresh: 'Refresh',
           loading: 'Loading...',
         }
@@ -68,10 +64,6 @@ function DashboardContent() {
           title: '数据概览',
           subtitle: '充值订单统计与分析',
           daySuffix: '天',
-          navOrders: '订单管理',
-          navPaymentConfig: '支付配置',
-          navChannels: '渠道管理',
-          navSubscriptions: '订阅管理',
           refresh: '刷新',
           loading: '加载中...',
         };
@@ -117,12 +109,6 @@ function DashboardContent() {
     );
   }
 
-  const navParams = new URLSearchParams();
-  navParams.set('token', token);
-  if (locale === 'en') navParams.set('lang', 'en');
-  if (theme === 'dark') navParams.set('theme', 'dark');
-  if (isEmbedded) navParams.set('ui_mode', 'embedded');
-
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
     isDark
@@ -151,18 +137,6 @@ function DashboardContent() {
               {text.daySuffix}
             </button>
           ))}
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
-            {text.navOrders}
-          </a>
-          <a href={`/admin/payment-config?${navParams}`} className={btnBase}>
-            {text.navPaymentConfig}
-          </a>
-          <a href={`/admin/channels?${navParams}`} className={btnBase}>
-            {text.navChannels}
-          </a>
-          <a href={`/admin/subscriptions?${navParams}`} className={btnBase}>
-            {text.navSubscriptions}
-          </a>
           <button type="button" onClick={fetchData} className={btnBase}>
             {text.refresh}
           </button>

@@ -15,10 +15,6 @@ function getTexts(locale: Locale) {
         invalidToken: 'Invalid admin token',
         title: 'Payment Config',
         subtitle: 'Configure recharge and payment settings',
-        dashboard: 'Dashboard',
-        orders: 'Orders',
-        channels: 'Channels',
-        subscriptions: 'Subscriptions',
         productNamePrefix: 'Product Name Prefix',
         productNameSuffix: 'Product Name Suffix',
         preview: 'Preview',
@@ -47,10 +43,6 @@ function getTexts(locale: Locale) {
         invalidToken: '管理员凭证无效',
         title: '支付配置',
         subtitle: '充值与支付相关配置',
-        dashboard: '数据概览',
-        orders: '订单管理',
-        channels: '渠道管理',
-        subscriptions: '订阅管理',
         productNamePrefix: '商品名前缀',
         productNameSuffix: '商品名后缀',
         preview: '预览',
@@ -212,21 +204,6 @@ function PaymentConfigContent() {
     );
   }
 
-  // ── Nav params ──
-
-  const navParams = new URLSearchParams();
-  if (token) navParams.set('token', token);
-  if (locale === 'en') navParams.set('lang', 'en');
-  if (isDark) navParams.set('theme', 'dark');
-  if (isEmbedded) navParams.set('ui_mode', 'embedded');
-
-  const btnBase = [
-    'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark
-      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
-      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
-  ].join(' ');
-
   // ── Shared input classes ──
 
   const inputCls = [
@@ -248,22 +225,6 @@ function PaymentConfigContent() {
       title={t.title}
       subtitle={t.subtitle}
       locale={locale}
-      actions={
-        <>
-          <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
-            {t.dashboard}
-          </a>
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
-            {t.orders}
-          </a>
-          <a href={`/admin/channels?${navParams}`} className={btnBase}>
-            {t.channels}
-          </a>
-          <a href={`/admin/subscriptions?${navParams}`} className={btnBase}>
-            {t.subscriptions}
-          </a>
-        </>
-      }
     >
       {/* Error banner */}
       {error && (

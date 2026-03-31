@@ -79,10 +79,6 @@ function buildText(locale: Locale) {
         requestFailed: 'Request failed',
         title: 'Subscription Management',
         subtitle: 'Manage subscription plans and user subscriptions',
-        orders: 'Order Management',
-        dashboard: 'Dashboard',
-        navPaymentConfig: 'Payment Config',
-        navChannels: 'Channels',
         refresh: 'Refresh',
         loading: 'Loading...',
         tabPlans: 'Plan Configuration',
@@ -163,10 +159,6 @@ function buildText(locale: Locale) {
         requestFailed: '请求失败',
         title: '订阅管理',
         subtitle: '管理订阅套餐与用户订阅',
-        orders: '订单管理',
-        dashboard: '数据概览',
-        navPaymentConfig: '支付配置',
-        navChannels: '渠道管理',
         refresh: '刷新',
         loading: '加载中...',
         tabPlans: '套餐配置',
@@ -608,12 +600,6 @@ function SubscriptionsContent() {
   }
 
   /* --- nav params --- */
-  const navParams = new URLSearchParams();
-  navParams.set('token', token);
-  if (locale === 'en') navParams.set('lang', 'en');
-  if (isDark) navParams.set('theme', 'dark');
-  if (isEmbedded) navParams.set('ui_mode', 'embedded');
-
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
     isDark
@@ -700,18 +686,6 @@ function SubscriptionsContent() {
       locale={locale}
       actions={
         <>
-          <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
-            {t.dashboard}
-          </a>
-          <a href={`/admin/orders?${navParams}`} className={btnBase}>
-            {t.orders}
-          </a>
-          <a href={`/admin/payment-config?${navParams}`} className={btnBase}>
-            {t.navPaymentConfig}
-          </a>
-          <a href={`/admin/channels?${navParams}`} className={btnBase}>
-            {t.navChannels}
-          </a>
           <button
             type="button"
             onClick={() => {
