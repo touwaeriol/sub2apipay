@@ -13,24 +13,35 @@ import { verifySign } from './sign';
 import { getEnv } from '@/lib/config';
 
 export class EasyPayProvider implements PaymentProvider {
-  readonly name = 'easy-pay';
+  readonly name: string;
   readonly providerKey = 'easypay';
   readonly supportedTypes: PaymentType[] = ['alipay', 'wxpay'];
   readonly defaultLimits = {
     alipay: { singleMax: 1000, dailyMax: 10000 },
     wxpay: { singleMax: 1000, dailyMax: 10000 },
   };
+  readonly instanceId?: string;
+  private instanceConfig?: Record<string, string>;
+
+  constructor(instanceId?: string, instanceConfig?: Record<string, string>) {
+    this.instanceId = instanceId;
+    this.instanceConfig = instanceConfig;
+    this.name = instanceId ? `easy-pay:${instanceId}` : 'easy-pay';
+  }
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
-    const result = await createPayment({
-      outTradeNo: request.orderId,
-      amount: request.amount.toFixed(2),
-      paymentType: request.paymentType as 'alipay' | 'wxpay',
-      clientIp: request.clientIp || '127.0.0.1',
-      productName: request.subject,
-      returnUrl: request.returnUrl,
-      isMobile: request.isMobile,
-    });
+    const result = await createPayment(
+      {
+        outTradeNo: request.orderId,
+        amount: request.amount.toFixed(2),
+        paymentType: request.paymentType as 'alipay' | 'wxpay',
+        clientIp: request.clientIp || '127.0.0.1',
+        productName: request.subject,
+        returnUrl: request.returnUrl,
+        isMobile: request.isMobile,
+      },
+      this.instanceConfig,
+    );
 
     return {
       tradeNo: result.trade_no,
@@ -40,7 +51,7 @@ export class EasyPayProvider implements PaymentProvider {
   }
 
   async queryOrder(tradeNo: string): Promise<QueryOrderResponse> {
-    const result = await queryOrder(tradeNo);
+    const result = await queryOrder(tradeNo, this.instanceConfig);
     return {
       tradeNo: result.trade_no,
       status: result.status === 1 ? 'paid' : 'pending',
@@ -50,7 +61,18 @@ export class EasyPayProvider implements PaymentProvider {
   }
 
   async verifyNotification(rawBody: string | Buffer, _headers: Record<string, string>): Promise<PaymentNotification> {
-    const env = getEnv();
+    let pkey: string;
+    let pid: string | undefined;
+
+    if (this.instanceConfig) {
+      pkey = this.instanceConfig.pkey;
+      pid = this.instanceConfig.pid;
+    } else {
+      const env = getEnv();
+      pkey = env.EASY_PAY_PKEY || '';
+      pid = env.EASY_PAY_PID;
+    }
+
     const body = typeof rawBody === 'string' ? rawBody : rawBody.toString('utf-8');
     const searchParams = new URLSearchParams(body);
 
@@ -67,13 +89,13 @@ export class EasyPayProvider implements PaymentProvider {
       }
     }
 
-    if (!env.EASY_PAY_PKEY || !verifySign(paramsForSign, env.EASY_PAY_PKEY, sign)) {
+    if (!pkey || !verifySign(paramsForSign, pkey, sign)) {
       throw new Error('EasyPay notification signature verification failed');
     }
 
     // 校验 pid 与配置一致，防止跨商户回调注入
-    if (params.pid && params.pid !== env.EASY_PAY_PID) {
-      throw new Error(`EasyPay notification pid mismatch: expected ${env.EASY_PAY_PID}, got ${params.pid}`);
+    if (params.pid && pid && params.pid !== pid) {
+      throw new Error(`EasyPay notification pid mismatch: expected ${pid}, got ${params.pid}`);
     }
 
     // 校验金额为有限正数
@@ -92,7 +114,7 @@ export class EasyPayProvider implements PaymentProvider {
   }
 
   async refund(request: RefundRequest): Promise<RefundResponse> {
-    await refund(request.tradeNo, request.orderId, request.amount.toFixed(2));
+    await refund(request.tradeNo, request.orderId, request.amount.toFixed(2), this.instanceConfig);
     return {
       refundId: `${request.tradeNo}-refund`,
       status: 'success',

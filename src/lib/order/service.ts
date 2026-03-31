@@ -21,6 +21,7 @@ import { pickLocaleText, type Locale } from '@/lib/locale';
 import { getBizDayStartUTC } from '@/lib/time/biz-day';
 import { buildOrderResultUrl, createOrderStatusAccessToken } from '@/lib/order/status-access';
 import { getSystemConfig, getSystemConfigs } from '@/lib/system-config';
+import { selectInstance, getInstanceConfig, type LoadBalanceStrategy } from '@/lib/payment/load-balancer';
 
 const DEFAULT_MAX_PENDING_ORDERS = 3;
 /** Decimal(10,2) 允许的最大金额 */
@@ -271,14 +272,34 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     initPaymentProviders();
     const provider = paymentRegistry.getProvider(input.paymentType);
 
+    // 多实例负载均衡：尝试为当前 provider 选择实例
+    let actualProvider = provider;
+    let selectedInstanceId: string | undefined;
+
+    const strategyConfig = await getSystemConfig('LOAD_BALANCE_STRATEGY');
+    const strategy = (strategyConfig === 'least-amount' ? 'least-amount' : 'round-robin') as LoadBalanceStrategy;
+
+    const instanceResult = await selectInstance(provider.providerKey, strategy);
+    if (instanceResult) {
+      if (provider.providerKey === 'easypay') {
+        const { EasyPayProvider } = await import('@/lib/easy-pay/provider');
+        actualProvider = new EasyPayProvider(instanceResult.instanceId, instanceResult.config);
+      }
+      selectedInstanceId = instanceResult.instanceId;
+    }
+
     const statusAccessToken = createOrderStatusAccessToken(order.id, input.userId);
     const orderResultUrl = buildOrderResultUrl(env.NEXT_PUBLIC_APP_URL, order.id, input.userId);
 
     // 只有 easypay 从外部传入 notifyUrl，return_url 统一回到带访问令牌的结果页
     let notifyUrl: string | undefined;
     let returnUrl: string | undefined = orderResultUrl;
-    if (provider.providerKey === 'easypay') {
-      notifyUrl = env.EASY_PAY_NOTIFY_URL || '';
+    if (actualProvider.providerKey === 'easypay') {
+      if (selectedInstanceId) {
+        notifyUrl = `${env.NEXT_PUBLIC_APP_URL}/api/easy-pay/notify?inst=${selectedInstanceId}`;
+      } else {
+        notifyUrl = env.EASY_PAY_NOTIFY_URL || '';
+      }
       returnUrl = orderResultUrl;
     }
 
@@ -299,7 +320,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       }
     }
 
-    const paymentResult = await provider.createPayment({
+    const paymentResult = await actualProvider.createPayment({
       orderId: order.id,
       amount: payAmountNum,
       paymentType: input.paymentType,
@@ -316,6 +337,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         paymentTradeNo: paymentResult.tradeNo,
         payUrl: paymentResult.payUrl || null,
         qrCode: paymentResult.qrCode || null,
+        providerInstanceId: selectedInstanceId ?? null,
       },
     });
 
@@ -395,17 +417,30 @@ export async function cancelOrderCore(options: {
   orderId: string;
   paymentTradeNo: string | null;
   paymentType: string | null;
+  providerInstanceId?: string | null;
   finalStatus: 'CANCELLED' | 'EXPIRED';
   operator: string;
   auditDetail: string;
 }): Promise<CancelOutcome> {
-  const { orderId, paymentTradeNo, paymentType, finalStatus, operator, auditDetail } = options;
+  const { orderId, paymentTradeNo, paymentType, providerInstanceId, finalStatus, operator, auditDetail } = options;
 
   // 1. 平台侧处理
   if (paymentTradeNo && paymentType) {
     try {
-      initPaymentProviders();
-      const provider = paymentRegistry.getProvider(paymentType as PaymentType);
+      let provider;
+      // 多实例：使用实例配置创建 provider
+      if (providerInstanceId) {
+        const instConfig = await getInstanceConfig(providerInstanceId);
+        if (instConfig) {
+          // 目前仅 easypay 支持多实例
+          const { EasyPayProvider } = await import('@/lib/easy-pay/provider');
+          provider = new EasyPayProvider(providerInstanceId, instConfig);
+        }
+      }
+      if (!provider) {
+        initPaymentProviders();
+        provider = paymentRegistry.getProvider(paymentType as PaymentType);
+      }
       const queryResult = await provider.queryOrder(paymentTradeNo);
 
       if (queryResult.status === 'paid') {
@@ -455,7 +490,7 @@ export async function cancelOrderCore(options: {
 export async function cancelOrder(orderId: string, userId: number, locale: Locale = 'zh'): Promise<CancelOutcome> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, userId: true, status: true, paymentTradeNo: true, paymentType: true },
+    select: { id: true, userId: true, status: true, paymentTradeNo: true, paymentType: true, providerInstanceId: true },
   });
 
   if (!order) throw new OrderError('NOT_FOUND', message(locale, '订单不存在', 'Order not found'), 404);
@@ -591,6 +626,7 @@ export async function cancelOrder(orderId: string, userId: number, locale: Local
     orderId: order.id,
     paymentTradeNo: order.paymentTradeNo,
     paymentType: order.paymentType,
+    providerInstanceId: order.providerInstanceId,
     finalStatus: ORDER_STATUS.CANCELLED,
     operator: `user:${userId}`,
     auditDetail: message(locale, '用户取消订单', 'User cancelled order'),
@@ -600,7 +636,7 @@ export async function cancelOrder(orderId: string, userId: number, locale: Local
 export async function adminCancelOrder(orderId: string, locale: Locale = 'zh'): Promise<CancelOutcome> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, status: true, paymentTradeNo: true, paymentType: true },
+    select: { id: true, status: true, paymentTradeNo: true, paymentType: true, providerInstanceId: true },
   });
 
   if (!order) throw new OrderError('NOT_FOUND', message(locale, '订单不存在', 'Order not found'), 404);
@@ -611,6 +647,7 @@ export async function adminCancelOrder(orderId: string, locale: Locale = 'zh'): 
     orderId: order.id,
     paymentTradeNo: order.paymentTradeNo,
     paymentType: order.paymentType,
+    providerInstanceId: order.providerInstanceId,
     finalStatus: ORDER_STATUS.CANCELLED,
     operator: 'admin',
     auditDetail: message(locale, '管理员取消订单', 'Admin cancelled order'),
@@ -1165,8 +1202,19 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
     // 2. 调用支付网关退款
     if (order.paymentTradeNo) {
       try {
-        initPaymentProviders();
-        const provider = paymentRegistry.getProvider(order.paymentType as PaymentType);
+        let provider;
+        // 多实例：使用实例配置创建 provider
+        if (order.providerInstanceId) {
+          const instConfig = await getInstanceConfig(order.providerInstanceId);
+          if (instConfig) {
+            const { EasyPayProvider } = await import('@/lib/easy-pay/provider');
+            provider = new EasyPayProvider(order.providerInstanceId, instConfig);
+          }
+        }
+        if (!provider) {
+          initPaymentProviders();
+          provider = paymentRegistry.getProvider(order.paymentType as PaymentType);
+        }
         await provider.refund({
           tradeNo: order.paymentTradeNo,
           orderId: order.id,

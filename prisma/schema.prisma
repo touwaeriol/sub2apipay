@@ -46,6 +46,7 @@ model Order {
   plan                SubscriptionPlan?  @relation(fields: [planId], references: [id])
   subscriptionGroupId Int?               @map("subscription_group_id")
   subscriptionDays    Int?               @map("subscription_days")
+  providerInstanceId  String?  @map("provider_instance_id")
 
   auditLogs     AuditLog[]
 
@@ -138,4 +139,20 @@ model SystemConfig {
 
   @@index([group])
   @@map("system_configs")
+}
+
+// ── 支付服务商实例（多实例轮询） ──
+model PaymentProviderInstance {
+  id          String   @id @default(cuid())
+  providerKey String   @map("provider_key") // easypay, alipay, wxpay, stripe
+  name        String   // display name like "易支付A"
+  config      String   @db.Text // encrypted JSON credentials
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([providerKey])
+  @@index([providerKey, enabled])
+  @@map("payment_provider_instances")
 }

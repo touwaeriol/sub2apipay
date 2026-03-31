@@ -47,6 +47,26 @@ function getTexts(locale: Locale) {
         dailyRechargeLimit: 'Daily Recharge Limit (0=unlimited)',
         orderTimeoutMinutes: 'Order Timeout (minutes)',
         loadingEnvDefaults: 'Loading defaults...',
+        instanceManagement: 'Provider Instances',
+        instanceManagementHint: 'Configure multiple instances for load balancing',
+        addInstance: 'Add Instance',
+        editInstance: 'Edit Instance',
+        instanceName: 'Instance Name',
+        instanceProvider: 'Provider',
+        instanceEnabled: 'Enabled',
+        instanceConfig: 'Credentials',
+        loadBalanceStrategy: 'Load Balance Strategy',
+        strategyRoundRobin: 'Round Robin',
+        strategyLeastAmount: 'Least Daily Amount',
+        noInstances: 'No instances configured. Using environment variable config.',
+        deleteInstanceConfirm: 'Are you sure you want to delete this instance?',
+        todayAmount: 'Today',
+        instanceSortOrder: 'Sort Order',
+        cancel: 'Cancel',
+        save: 'Save',
+        saving: 'Saving...',
+        instanceSaveFailed: 'Failed to save instance',
+        instanceDeleteFailed: 'Failed to delete instance',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -86,6 +106,26 @@ function getTexts(locale: Locale) {
         dailyRechargeLimit: '每日充值限额（0=不限）',
         orderTimeoutMinutes: '订单超时（分钟）',
         loadingEnvDefaults: '加载默认值...',
+        instanceManagement: '服务商实例',
+        instanceManagementHint: '配置多个服务商实例实现负载均衡',
+        addInstance: '添加实例',
+        editInstance: '编辑实例',
+        instanceName: '实例名称',
+        instanceProvider: '服务商',
+        instanceEnabled: '启用',
+        instanceConfig: '凭证配置',
+        loadBalanceStrategy: '负载策略',
+        strategyRoundRobin: '轮询',
+        strategyLeastAmount: '基于已支付金额',
+        noInstances: '未配置实例，使用环境变量配置。',
+        deleteInstanceConfirm: '确定删除该实例？',
+        todayAmount: '今日',
+        instanceSortOrder: '排序',
+        cancel: '取消',
+        save: '保存',
+        saving: '保存中...',
+        instanceSaveFailed: '保存实例失败',
+        instanceDeleteFailed: '删除实例失败',
       };
 }
 
@@ -110,6 +150,80 @@ interface ProviderInfo {
   key: string;
   configured: boolean;
   types: string[];
+}
+
+// ── Provider config field definitions ──
+
+interface ConfigFieldDef {
+  key: string;
+  label: { en: string; zh: string };
+  sensitive: boolean;
+  optional?: boolean;
+}
+
+const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
+  easypay: [
+    { key: 'pid', label: { en: 'PID', zh: 'PID' }, sensitive: false },
+    { key: 'pkey', label: { en: 'PKey (Secret)', zh: 'PKey（密钥）' }, sensitive: true },
+    { key: 'apiBase', label: { en: 'API Base URL', zh: 'API 基础地址' }, sensitive: false, optional: true },
+    { key: 'notifyUrl', label: { en: 'Notify URL', zh: '异步通知地址' }, sensitive: false, optional: true },
+    { key: 'returnUrl', label: { en: 'Return URL', zh: '同步跳转地址' }, sensitive: false, optional: true },
+    { key: 'cid', label: { en: 'Channel ID (optional)', zh: '渠道 ID（可选）' }, sensitive: false, optional: true },
+    {
+      key: 'cidAlipay',
+      label: { en: 'Alipay Channel ID (optional)', zh: '支付宝渠道 ID（可选）' },
+      sensitive: false,
+      optional: true,
+    },
+    {
+      key: 'cidWxpay',
+      label: { en: 'WeChat Channel ID (optional)', zh: '微信渠道 ID（可选）' },
+      sensitive: false,
+      optional: true,
+    },
+  ],
+  alipay: [
+    { key: 'appId', label: { en: 'App ID', zh: 'App ID' }, sensitive: false },
+    { key: 'privateKey', label: { en: 'Private Key', zh: '私钥' }, sensitive: true },
+    { key: 'publicKey', label: { en: 'Alipay Public Key', zh: '支付宝公钥' }, sensitive: true },
+    { key: 'notifyUrl', label: { en: 'Notify URL', zh: '异步通知地址' }, sensitive: false, optional: true },
+    { key: 'returnUrl', label: { en: 'Return URL', zh: '同步跳转地址' }, sensitive: false, optional: true },
+  ],
+  wxpay: [
+    { key: 'appId', label: { en: 'App ID', zh: 'App ID' }, sensitive: false },
+    { key: 'mchId', label: { en: 'Merchant ID', zh: '商户号' }, sensitive: false },
+    { key: 'privateKey', label: { en: 'Private Key', zh: '私钥' }, sensitive: true },
+    { key: 'apiV3Key', label: { en: 'API v3 Key', zh: 'API v3 密钥' }, sensitive: true },
+    { key: 'publicKey', label: { en: 'Public Key', zh: '公钥' }, sensitive: true },
+    { key: 'publicKeyId', label: { en: 'Public Key ID', zh: '公钥 ID' }, sensitive: false },
+    { key: 'certSerial', label: { en: 'Certificate Serial', zh: '证书序列号' }, sensitive: false },
+    { key: 'notifyUrl', label: { en: 'Notify URL', zh: '异步通知地址' }, sensitive: false, optional: true },
+  ],
+  stripe: [
+    { key: 'secretKey', label: { en: 'Secret Key', zh: '密钥' }, sensitive: true },
+    { key: 'publishableKey', label: { en: 'Publishable Key', zh: '公开密钥' }, sensitive: false },
+    { key: 'webhookSecret', label: { en: 'Webhook Secret', zh: 'Webhook 密钥' }, sensitive: true },
+  ],
+};
+
+interface ProviderInstanceData {
+  id: string;
+  providerKey: string;
+  name: string;
+  config: Record<string, string>;
+  enabled: boolean;
+  sortOrder: number;
+  todayAmount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface InstanceFormData {
+  providerKey: string;
+  name: string;
+  enabled: boolean;
+  sortOrder: number;
+  config: Record<string, string>;
 }
 
 // ── Main Content ──
@@ -148,6 +262,20 @@ function PaymentConfigContent() {
   const [availablePaymentTypes, setAvailablePaymentTypes] = useState<string[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
 
+  // Provider instances state
+  const [instances, setInstances] = useState<ProviderInstanceData[]>([]);
+  const [instanceModalOpen, setInstanceModalOpen] = useState(false);
+  const [editingInstance, setEditingInstance] = useState<ProviderInstanceData | null>(null);
+  const [instanceForm, setInstanceForm] = useState<InstanceFormData>({
+    providerKey: 'easypay',
+    name: '',
+    enabled: true,
+    sortOrder: 0,
+    config: {},
+  });
+  const [instanceSaving, setInstanceSaving] = useState(false);
+  const [rcLoadBalanceStrategy, setRcLoadBalanceStrategy] = useState('round-robin');
+
   // Fetch recharge config
   const fetchRechargeConfig = useCallback(async () => {
     if (!token) return;
@@ -179,6 +307,7 @@ function PaymentConfigContent() {
           if (c.key === 'RECHARGE_MAX_AMOUNT') setRcMaxAmount(c.value);
           if (c.key === 'DAILY_RECHARGE_LIMIT') setRcDailyLimit(c.value);
           if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
+          if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
           if (overrideKeys.includes(c.key)) hasOverride = true;
         }
         setRcOverrideEnv(hasOverride);
@@ -218,6 +347,103 @@ function PaymentConfigContent() {
     if (newValue && !rcEnabledPaymentTypes && !rcMinAmount && !rcMaxAmount && !rcDailyLimit && !rcOrderTimeout) {
       fetchEnvDefaults();
     }
+  };
+
+  // ── Provider Instances ──
+
+  const fetchInstances = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin/provider-instances?token=${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInstances(data.instances ?? []);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [token]);
+
+  const saveInstance = async () => {
+    setInstanceSaving(true);
+    setError('');
+    try {
+      const url = editingInstance
+        ? `/api/admin/provider-instances/${editingInstance.id}`
+        : '/api/admin/provider-instances';
+      const method = editingInstance ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          providerKey: instanceForm.providerKey,
+          name: instanceForm.name.trim(),
+          enabled: instanceForm.enabled,
+          sortOrder: instanceForm.sortOrder,
+          config: instanceForm.config,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || t.instanceSaveFailed);
+        return;
+      }
+
+      setInstanceModalOpen(false);
+      setEditingInstance(null);
+      fetchInstances();
+    } catch {
+      setError(t.instanceSaveFailed);
+    } finally {
+      setInstanceSaving(false);
+    }
+  };
+
+  const handleDeleteInstance = async (id: string) => {
+    if (!confirm(t.deleteInstanceConfirm)) return;
+    try {
+      const res = await fetch(`/api/admin/provider-instances/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || t.instanceDeleteFailed);
+        return;
+      }
+      fetchInstances();
+    } catch {
+      setError(t.instanceDeleteFailed);
+    }
+  };
+
+  const openEditInstance = (inst: ProviderInstanceData) => {
+    setEditingInstance(inst);
+    setInstanceForm({
+      providerKey: inst.providerKey,
+      name: inst.name,
+      enabled: inst.enabled,
+      sortOrder: inst.sortOrder,
+      config: { ...inst.config },
+    });
+    setInstanceModalOpen(true);
+  };
+
+  const openCreateInstance = () => {
+    setEditingInstance(null);
+    setInstanceForm({
+      providerKey: 'easypay',
+      name: '',
+      enabled: true,
+      sortOrder: 0,
+      config: {},
+    });
+    setInstanceModalOpen(true);
   };
 
   const saveRechargeConfig = async () => {
@@ -288,6 +514,12 @@ function PaymentConfigContent() {
                   { key: 'RECHARGE_MAX_AMOUNT', value: rcMaxAmount, group: 'payment', label: '最大充值金额' },
                   { key: 'DAILY_RECHARGE_LIMIT', value: rcDailyLimit, group: 'payment', label: '每日充值限额' },
                   { key: 'ORDER_TIMEOUT_MINUTES', value: rcOrderTimeout, group: 'payment', label: '订单超时时间' },
+                  {
+                    key: 'LOAD_BALANCE_STRATEGY',
+                    value: rcLoadBalanceStrategy,
+                    group: 'payment',
+                    label: '负载均衡策略',
+                  },
                 ]
               : []),
           ],
@@ -305,7 +537,8 @@ function PaymentConfigContent() {
 
   useEffect(() => {
     fetchRechargeConfig();
-  }, [fetchRechargeConfig]);
+    fetchInstances();
+  }, [fetchRechargeConfig, fetchInstances]);
 
   // ── Missing token ──
 
@@ -523,6 +756,110 @@ function PaymentConfigContent() {
           ))}
       </div>
 
+      {/* ── Provider Instances ── */}
+      {rcOverrideEnv && (
+        <div
+          className={[
+            'rounded-xl border p-4 mb-4',
+            isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+          ].join(' ')}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className={['text-sm font-semibold', isDark ? 'text-slate-100' : 'text-slate-900'].join(' ')}>
+                {t.instanceManagement}
+              </h3>
+              <p className={['text-xs mt-0.5', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                {t.instanceManagementHint}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openCreateInstance}
+              className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
+            >
+              {t.addInstance}
+            </button>
+          </div>
+
+          {/* Load balance strategy selector */}
+          <div className="mb-3 flex items-center gap-3">
+            <label className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-700'].join(' ')}>
+              {t.loadBalanceStrategy}
+            </label>
+            <select
+              value={rcLoadBalanceStrategy}
+              onChange={(e) => setRcLoadBalanceStrategy(e.target.value)}
+              className={[inputCls, 'w-auto'].join(' ')}
+            >
+              <option value="round-robin">{t.strategyRoundRobin}</option>
+              <option value="least-amount">{t.strategyLeastAmount}</option>
+            </select>
+          </div>
+
+          {/* Instance list */}
+          {instances.length === 0 ? (
+            <p className={['text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>{t.noInstances}</p>
+          ) : (
+            <div className="space-y-2">
+              {instances.map((inst) => (
+                <div
+                  key={inst.id}
+                  className={[
+                    'flex items-center justify-between rounded-lg border p-3',
+                    isDark ? 'border-slate-600 bg-slate-700/50' : 'border-slate-200 bg-slate-50',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={['font-medium text-sm', isDark ? 'text-slate-100' : 'text-slate-900'].join(' ')}>
+                      {inst.name}
+                    </span>
+                    <span
+                      className={[
+                        'text-[10px] px-2 py-0.5 rounded-full shrink-0',
+                        isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600',
+                      ].join(' ')}
+                    >
+                      {PROVIDER_LABELS[inst.providerKey]?.[locale] || inst.providerKey}
+                    </span>
+                    {inst.todayAmount !== undefined && inst.todayAmount > 0 && (
+                      <span className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                        {t.todayAmount}: ¥{inst.todayAmount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={inst.enabled ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}>
+                      {inst.enabled ? '●' : '○'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openEditInstance(inst)}
+                      className={[
+                        'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                        isDark ? 'text-indigo-400 hover:bg-indigo-500/20' : 'text-indigo-600 hover:bg-indigo-50',
+                      ].join(' ')}
+                    >
+                      {locale === 'en' ? 'Edit' : '编辑'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteInstance(inst.id)}
+                      className={[
+                        'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                        isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50',
+                      ].join(' ')}
+                    >
+                      {locale === 'en' ? 'Delete' : '删除'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Payment Config ── */}
       <div
         className={[
@@ -693,6 +1030,145 @@ function PaymentConfigContent() {
           </button>
         </div>
       </div>
+
+      {/* ── Instance Edit / Create Modal ── */}
+      {instanceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className={[
+              'relative w-full max-w-lg overflow-y-auto rounded-2xl border p-6 shadow-2xl',
+              isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white',
+            ].join(' ')}
+            style={{ maxHeight: '90vh' }}
+          >
+            <h2 className={`mb-5 text-lg font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+              {editingInstance ? t.editInstance : t.addInstance}
+            </h2>
+
+            <div className="space-y-4">
+              {/* Provider */}
+              <div>
+                <label className={labelCls}>{t.instanceProvider}</label>
+                <select
+                  value={instanceForm.providerKey}
+                  onChange={(e) => setInstanceForm({ ...instanceForm, providerKey: e.target.value, config: {} })}
+                  className={inputCls}
+                  disabled={!!editingInstance}
+                >
+                  {Object.entries(PROVIDER_LABELS).map(([key, labels]) => (
+                    <option key={key} value={key}>
+                      {labels[locale]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Instance name */}
+              <div>
+                <label className={labelCls}>{t.instanceName}</label>
+                <input
+                  type="text"
+                  value={instanceForm.name}
+                  onChange={(e) => setInstanceForm({ ...instanceForm, name: e.target.value })}
+                  className={inputCls}
+                  required
+                />
+              </div>
+
+              {/* Sort order */}
+              <div>
+                <label className={labelCls}>{t.instanceSortOrder}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={instanceForm.sortOrder}
+                  onChange={(e) => setInstanceForm({ ...instanceForm, sortOrder: parseInt(e.target.value, 10) || 0 })}
+                  className={[inputCls, 'w-24'].join(' ')}
+                />
+              </div>
+
+              {/* Enabled toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setInstanceForm({ ...instanceForm, enabled: !instanceForm.enabled })}
+                  className={[
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    instanceForm.enabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
+                  ].join(' ')}
+                >
+                  <span
+                    className={[
+                      'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                      instanceForm.enabled ? 'translate-x-6' : 'translate-x-1',
+                    ].join(' ')}
+                  />
+                </button>
+                <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.instanceEnabled}</span>
+              </div>
+
+              {/* Config fields */}
+              <div>
+                <label className={[labelCls, 'mb-2'].join(' ')}>{t.instanceConfig}</label>
+                <div className="space-y-3">
+                  {(PROVIDER_CONFIG_FIELDS[instanceForm.providerKey] ?? []).map((field) => (
+                    <div key={field.key}>
+                      <label
+                        className={[
+                          'block text-xs font-medium mb-0.5',
+                          isDark ? 'text-slate-400' : 'text-slate-500',
+                        ].join(' ')}
+                      >
+                        {field.label[locale]}
+                        {field.optional && (
+                          <span className="ml-1 opacity-50">({locale === 'en' ? 'optional' : '可选'})</span>
+                        )}
+                      </label>
+                      <input
+                        type={field.sensitive ? 'password' : 'text'}
+                        value={instanceForm.config[field.key] ?? ''}
+                        onChange={(e) =>
+                          setInstanceForm({
+                            ...instanceForm,
+                            config: { ...instanceForm.config, [field.key]: e.target.value },
+                          })
+                        }
+                        className={inputCls}
+                        autoComplete="off"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setInstanceModalOpen(false);
+                  setEditingInstance(null);
+                }}
+                className={[
+                  'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+                  isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100',
+                ].join(' ')}
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={saveInstance}
+                disabled={instanceSaving || !instanceForm.name.trim()}
+                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {instanceSaving ? t.saving : t.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PayPageLayout>
   );
 }

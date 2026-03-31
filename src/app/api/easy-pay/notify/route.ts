@@ -1,13 +1,28 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
 import { paymentRegistry } from '@/lib/payment';
-import type { PaymentType } from '@/lib/payment';
+import type { PaymentType, PaymentProvider } from '@/lib/payment';
+import { EasyPayProvider } from '@/lib/easy-pay/provider';
+import { getInstanceConfig } from '@/lib/payment/load-balancer';
 import { extractHeaders } from '@/lib/utils/api';
 
 export async function GET(request: NextRequest) {
   try {
-    // EasyPay 注册为 'alipay' 和 'wxpay' 类型，任一均可获取同一 provider 实例
-    const provider = paymentRegistry.getProvider('alipay' as PaymentType);
+    const instId = request.nextUrl.searchParams.get('inst');
+
+    let provider: PaymentProvider;
+    if (instId) {
+      // 多实例模式：根据实例 ID 获取配置
+      const config = await getInstanceConfig(instId);
+      if (!config) {
+        return new Response('Invalid instance', { status: 400, headers: { 'Content-Type': 'text/plain' } });
+      }
+      provider = new EasyPayProvider(instId, config);
+    } else {
+      // 回退到环境变量单实例模式
+      provider = paymentRegistry.getProvider('alipay' as PaymentType);
+    }
+
     const rawBody = request.nextUrl.searchParams.toString();
     const headers = extractHeaders(request);
 

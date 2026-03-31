@@ -219,6 +219,7 @@ describe('Payment Flow - PC/Mobile, QR/Redirect', () => {
           paymentType: 'alipay',
           isMobile: true,
         }),
+        undefined,
       );
     });
   });
