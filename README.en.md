@@ -23,6 +23,8 @@ Sub2ApiPay is a self-hosted payment gateway built for the [Sub2API](https://sub2
 ## Features
 
 - **Four Payment Channels** — EasyPay aggregation, Alipay (official), WeChat Pay (official), Stripe
+- **Online Configuration** — Payment providers, credentials, limits, and business rules can all be configured in the admin panel in real-time, no restart needed
+- **Multi-Instance Load Balancing** — Create multiple instances per provider with round-robin or least-amount strategies, per-channel single/daily limits
 - **Dual Billing Modes** — Pay-as-you-go balance top-up + subscription plans
 - **Auto Balance Credit** — Automatically calls Sub2API after payment verification, fully hands-free
 - **Full Order Lifecycle** — Auto-expiry, user cancellation, admin cancellation, refunds
@@ -107,6 +109,24 @@ See [`.env.example`](./.env.example) for the full template.
 
 ### Payment Providers & Methods
 
+Payment providers and settings can be configured in two ways — **choose either**:
+
+#### Option A: Online Configuration via Admin Panel (Recommended)
+
+In the admin panel's **Payment Config** page (`/admin/payment-config`), you can configure everything through the web UI without editing environment variables or restarting the service:
+
+- **Override Env Variables** — When enabled, database settings override environment variables. Existing env values are auto-imported on first enable
+- **Provider Management** — Add / edit / delete payment instances, configure credentials, enable/disable, channels, load balancing strategy
+- **Multi-Instance** — Create multiple instances per provider with round-robin or least-amount load balancing
+- **Instance Limits** — Each instance supports per-channel single min / single max / daily total limits
+- **Business Settings** — Recharge amount range, daily limits, order timeout, cancel rate limits — all adjustable online
+
+> **Tip**: Changes take effect immediately, no container restart needed. Access: Sub2API Admin → Payment Config, or directly visit `https://pay.example.com/admin/payment-config?token=YOUR_ADMIN_TOKEN`.
+
+#### Option B: Environment Variable Configuration
+
+Best for initial deployment or teams that prefer file-based configuration. Env values serve as defaults and can be overridden in the admin panel at any time.
+
 **Step 1**: Declare which payment providers to load via `PAYMENT_PROVIDERS` (comma-separated):
 
 ```env
@@ -172,6 +192,8 @@ Direct integration with WeChat Pay APIv3. Supports Native QR code payment and H5
 > Subscribe to: `payment_intent.succeeded`, `payment_intent.payment_failed`
 
 ### Business Rules
+
+These parameters can be set via environment variables as defaults, or configured online in the admin **Payment Config** page (requires "Override Env Variables" to be enabled):
 
 | Variable                         | Description                                       | Default                    |
 | -------------------------------- | ------------------------------------------------- | -------------------------- |
@@ -321,8 +343,9 @@ The admin panel is authenticated via the `token` URL parameter (set to the `ADMI
 | ------------- | --------------------------------------------- | ------------------------------------------------------------- |
 | Overview      | `https://pay.example.com/admin`               | Aggregated entry with card-style navigation                   |
 | Orders        | `https://pay.example.com/admin/orders`        | Filter by status, paginate, view details, retry/cancel/refund |
-| Dashboard     | `https://pay.example.com/admin/dashboard`     | Revenue stats, order trends, payment method breakdown         |
-| Channels      | `https://pay.example.com/admin/channels`      | Configure API channels & rates, sync from Sub2API             |
+| Dashboard     | `https://pay.example.com/admin/dashboard`      | Revenue stats, order trends, payment method breakdown         |
+| Payment Config | `https://pay.example.com/admin/payment-config` | Provider management, instance config, limits, online settings |
+| Channels      | `https://pay.example.com/admin/channels`       | Configure API channels & rates, sync from Sub2API             |
 | Subscriptions | `https://pay.example.com/admin/subscriptions` | Manage subscription plans & user subscriptions                |
 
 > **Tip**: When accessing directly (not via Sub2API), you need to manually append `?token=YOUR_ADMIN_TOKEN` to the URL. All admin pages share the same token — once you enter any page, you can navigate between modules via the sidebar.
