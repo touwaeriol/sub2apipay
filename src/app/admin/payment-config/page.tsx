@@ -362,6 +362,32 @@ function PaymentConfigContent() {
         setRcMaxAmount(d.RECHARGE_MAX_AMOUNT || '1000');
         setRcDailyLimit(d.DAILY_RECHARGE_LIMIT || '10000');
         setRcOrderTimeout(d.ORDER_TIMEOUT_MINUTES || '5');
+        if (d.MAX_PENDING_ORDERS) setRcMaxPendingOrders(d.MAX_PENDING_ORDERS);
+
+        // 自动创建服务商实例（仅当当前无实例时）
+        const instDefaults = data.instanceDefaults || {};
+        if (instances.length === 0) {
+          for (const [providerKey, instData] of Object.entries(instDefaults)) {
+            const { name, config, supportedTypes } = instData as {
+              name: string;
+              config: Record<string, string>;
+              supportedTypes: string;
+            };
+            try {
+              const instRes = await fetch('/api/admin/provider-instances', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ providerKey, name, config, supportedTypes, enabled: true, sortOrder: 0 }),
+              });
+              if (!instRes.ok) {
+                console.warn(`Failed to create instance for ${providerKey}`);
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+          fetchInstances();
+        }
       }
     } catch {
       /* ignore */
