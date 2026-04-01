@@ -915,6 +915,7 @@ function PaymentConfigContent() {
                     <div className="space-y-3">
                       {enabledProviderKeys.map((pk) => {
                         const providerInstances = instances.filter((i) => i.providerKey === pk);
+                        if (providerInstances.length === 0) return null;
                         return (
                           <div
                             key={pk}
@@ -928,12 +929,7 @@ function PaymentConfigContent() {
                             >
                               {PROVIDER_LABELS[pk]?.[locale] || pk}
                             </h4>
-                            {providerInstances.length === 0 ? (
-                              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                {locale === 'en' ? 'No instances' : '暂无实例'}
-                              </p>
-                            ) : (
-                              <div className="space-y-1.5">
+                            <div className="space-y-1.5">
                                 {providerInstances.map((inst) => {
                                   const instTypes = inst.supportedTypes
                                     ? inst.supportedTypes.split(',').filter(Boolean)
@@ -995,7 +991,6 @@ function PaymentConfigContent() {
                                   );
                                 })}
                               </div>
-                            )}
                           </div>
                         );
                       })}
