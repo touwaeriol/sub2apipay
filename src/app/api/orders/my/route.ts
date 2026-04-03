@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         const derived = deriveOrderState(item);
         const instanceRefundEnabled = item.providerInstanceId
           ? (refundEnabledMap.get(item.providerInstanceId) ?? false)
-          : false;
+          : true;
         return {
           id: item.id,
           amount: Number(item.amount),

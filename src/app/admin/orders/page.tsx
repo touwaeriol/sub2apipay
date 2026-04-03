@@ -162,6 +162,7 @@ function AdminContent() {
   const [refundUserBalance, setRefundUserBalance] = useState<number | undefined>(undefined);
   const [refundSubRemainingDays, setRefundSubRemainingDays] = useState<number | undefined>(undefined);
   const [refundWarning, setRefundWarning] = useState<string | undefined>(undefined);
+  const [defaultDeductBalance, setDefaultDeductBalance] = useState(true);
   const [refundRequireForce, setRefundRequireForce] = useState(false);
 
   const fetchOrders = useCallback(async () => {
@@ -195,6 +196,17 @@ function AdminContent() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/admin/config?token=${token}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const val = data?.configs?.find((c: { key: string }) => c.key === 'DEFAULT_DEDUCT_BALANCE');
+        if (val) setDefaultDeductBalance(val.value === 'true');
+      })
+      .catch(() => {});
+  }, [token]);
 
   if (!token) {
     return (
@@ -482,6 +494,7 @@ function AdminContent() {
           userBalance={refundUserBalance}
           subscriptionDays={refundOrder.subscriptionDays ?? undefined}
           subscriptionRemainingDays={refundSubRemainingDays}
+          defaultDeductBalance={defaultDeductBalance}
           warning={refundWarning}
           requireForce={refundRequireForce}
           onConfirm={handleConfirmRefund}

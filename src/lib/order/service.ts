@@ -1173,7 +1173,6 @@ export async function requestRefund(input: RefundRequestInput): Promise<{ succes
     );
   }
 
-  const autoRefundEnabled = (await getSystemConfig('AUTO_REFUND_ENABLED')) === 'true';
   const normalizedReason = input.reason?.trim() || null;
 
   const updated = await prisma.order.updateMany({
@@ -1203,20 +1202,10 @@ export async function requestRefund(input: RefundRequestInput): Promise<{ succes
         amount: refundAmount,
         reason: normalizedReason,
         requestedBy: input.userId,
-        autoRefundEnabled,
       }),
       operator: `user:${input.userId}`,
     },
   });
-
-  if (autoRefundEnabled) {
-    return processRefund({
-      orderId: input.orderId,
-      amount: refundAmount,
-      reason: normalizedReason || undefined,
-      locale,
-    });
-  }
 
   return { success: true };
 }

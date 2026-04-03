@@ -69,8 +69,8 @@ function getTexts(locale: Locale) {
         allChannels: 'All Channels',
         sub2apiAdminApiKey: 'Sub2API Admin API Key',
         sub2apiAdminApiKeyHint: 'Leave empty to use environment variable',
-        autoRefund: 'Auto Refund',
-        autoRefundHint: 'When enabled, user refund requests are executed immediately without admin approval',
+        defaultDeductBalance: 'Default Deduct Balance',
+        defaultDeductBalanceHint: 'When enabled, refund approval defaults to deducting balance/subscription',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -132,8 +132,8 @@ function getTexts(locale: Locale) {
         allChannels: '全部渠道',
         sub2apiAdminApiKey: 'Sub2API Admin API Key',
         sub2apiAdminApiKeyHint: '留空则使用环境变量',
-        autoRefund: '自动退款',
-        autoRefundHint: '开启后，用户提交退款申请会立即执行退款，无需管理员审核',
+        defaultDeductBalance: '默认扣除余额/订阅',
+        defaultDeductBalanceHint: '开启后，退款通过时默认扣除余额/订阅；关闭时默认不扣除',
       };
 }
 
@@ -259,7 +259,7 @@ function PaymentConfigContent() {
   const [rcSaving, setRcSaving] = useState(false);
   const [rcLoadBalanceStrategy, setRcLoadBalanceStrategy] = useState('round-robin');
   const [rcSub2apiKey, setRcSub2apiKey] = useState('');
-  const [rcAutoRefundEnabled, setRcAutoRefundEnabled] = useState(false);
+  const [rcAutoRefundEnabled, setRcAutoRefundEnabled] = useState(true);
 
   // Override env
   const [rcOverrideEnv, setRcOverrideEnv] = useState(false);
@@ -327,7 +327,7 @@ function PaymentConfigContent() {
         if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
         if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
         if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(/\*{4,}/.test(c.value) ? '' : c.value);
-        if (c.key === 'AUTO_REFUND_ENABLED') setRcAutoRefundEnabled(c.value === 'true');
+        if (c.key === 'DEFAULT_DEDUCT_BALANCE') setRcAutoRefundEnabled(c.value === 'true');
       }
       setRcOverrideEnv(hasOverride);
       setRcOverrideSaved(hasOverride);
@@ -577,7 +577,7 @@ function PaymentConfigContent() {
               label: '余额充值禁用',
             },
             {
-              key: 'AUTO_REFUND_ENABLED',
+              key: 'DEFAULT_DEDUCT_BALANCE',
               value: rcAutoRefundEnabled ? 'true' : 'false',
               group: 'payment',
               label: '自动退款开关',
@@ -775,9 +775,11 @@ function PaymentConfigContent() {
           </div>
           <div className="flex items-center gap-2">
             <Toggle value={rcAutoRefundEnabled} onChange={() => setRcAutoRefundEnabled(!rcAutoRefundEnabled)} />
-            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.autoRefund}</span>
+            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.defaultDeductBalance}</span>
           </div>
-          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.autoRefundHint}</span>
+          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {t.defaultDeductBalanceHint}
+          </span>
         </div>
 
         {/* Cancel rate limit */}

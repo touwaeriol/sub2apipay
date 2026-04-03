@@ -11,6 +11,7 @@ interface RefundDialogProps {
   subscriptionDays?: number;
   subscriptionRemainingDays?: number;
   requestedAmount?: number | null;
+  defaultDeductBalance?: boolean;
   onConfirm: (reason: string, force: boolean, deductBalance: boolean, amount?: number) => Promise<void>;
   onCancel: () => void;
   warning?: string;
@@ -27,6 +28,7 @@ export default function RefundDialog({
   subscriptionDays,
   subscriptionRemainingDays,
   requestedAmount,
+  defaultDeductBalance = true,
   onConfirm,
   onCancel,
   warning,
@@ -37,7 +39,7 @@ export default function RefundDialog({
   const [reason, setReason] = useState('');
   const [refundAmount, setRefundAmount] = useState((requestedAmount ?? amount).toFixed(2));
   const [force, setForce] = useState(false);
-  const [deductBalance, setDeductBalance] = useState(true);
+  const [deductBalance, setDeductBalance] = useState(defaultDeductBalance);
   const [loading, setLoading] = useState(false);
 
   const currency = '¥';
