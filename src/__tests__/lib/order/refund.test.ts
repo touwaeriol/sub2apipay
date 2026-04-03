@@ -343,14 +343,18 @@ describe('processRefund', () => {
     }
   });
 
-  // ── 12. 网关退款失败 → 回滚余额，抛出错误 ──
-  it('网关退款失败 + 余额回滚成功 → 恢复 COMPLETED 并记录 REFUND_GATEWAY_FAILED', async () => {
+  // ── 12. 网关退款失败 + 回滚成功 → 返回 { success: false } 并恢复 COMPLETED ──
+  it('网关退款失败 + 余额回滚成功 → 返回失败结果，恢复 COMPLETED 并记录 REFUND_GATEWAY_FAILED', async () => {
     const order = makeOrder();
     mockOrderFindUnique.mockResolvedValue(order);
     mockGetUser.mockResolvedValue({ id: 42, balance: 200, status: 'active' });
     mockProviderRefund.mockRejectedValue(new Error('gateway timeout'));
 
-    await expect(processRefund({ orderId: 'order-001' })).rejects.toThrow('gateway timeout');
+    const result = await processRefund({ orderId: 'order-001' });
+
+    // 不再 throw，而是返回结构化失败结果
+    expect(result.success).toBe(false);
+    expect(result.warning).toContain('gateway timeout');
 
     // 余额被扣减后应回滚
     expect(mockSubtractBalance).toHaveBeenCalled();
@@ -375,7 +379,7 @@ describe('processRefund', () => {
       }),
     );
 
-    // 外层 catch 应跳过（_refundHandled=true），不应再覆盖为 REFUND_FAILED
+    // 不应覆盖为 REFUND_FAILED
     const refundFailedCalls = mockOrderUpdate.mock.calls.filter(
       (call: unknown[]) =>
         ((call as unknown[])[0] as { data: { status?: string } }).data.status === ORDER_STATUS.REFUND_FAILED,
@@ -383,21 +387,24 @@ describe('processRefund', () => {
     expect(refundFailedCalls).toHaveLength(0);
   });
 
-  it('网关退款失败 + 订阅回滚成功 → 恢复 COMPLETED 并记录 REFUND_GATEWAY_FAILED', async () => {
+  it('网关退款失败 + 订阅回滚成功 → 返回失败结果，恢复 COMPLETED 并记录 REFUND_GATEWAY_FAILED', async () => {
     const order = makeSubscriptionOrder();
     mockOrderFindUnique.mockResolvedValue(order);
     const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
     mockGetUserSubscriptions.mockResolvedValue([{ id: 101, group_id: 10, status: 'active', expires_at: expiresAt }]);
     mockProviderRefund.mockRejectedValue(new Error('gateway error'));
 
-    await expect(processRefund({ orderId: 'order-001' })).rejects.toThrow('gateway error');
+    const result = await processRefund({ orderId: 'order-001' });
+
+    expect(result.success).toBe(false);
+    expect(result.warning).toContain('gateway error');
 
     // 先扣减
     expect(mockExtendSubscription).toHaveBeenCalledWith(101, -30, expect.any(String));
     // 后回滚（正数恢复）
     expect(mockExtendSubscription).toHaveBeenCalledWith(101, 30, expect.any(String));
 
-    // 内层回滚成功后先恢复 COMPLETED
+    // 回滚成功后恢复 COMPLETED
     expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: ORDER_STATUS.COMPLETED }),
@@ -411,7 +418,7 @@ describe('processRefund', () => {
       }),
     );
 
-    // 外层 catch 应跳过，不覆盖为 REFUND_FAILED
+    // 不应覆盖为 REFUND_FAILED
     const refundFailedCalls = mockOrderUpdate.mock.calls.filter(
       (call: unknown[]) =>
         ((call as unknown[])[0] as { data: { status?: string } }).data.status === ORDER_STATUS.REFUND_FAILED,
@@ -429,9 +436,16 @@ describe('processRefund', () => {
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await expect(processRefund({ orderId: 'order-001' })).rejects.toThrow('gateway down');
+    try {
+      await processRefund({ orderId: 'order-001' });
+      expect.unreachable('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(OrderError);
+      expect((e as OrderError).code).toBe('REFUND_FAILED');
+      expect((e as OrderError).message).toContain('gateway down');
+    }
 
-    // 内层回滚失败后标记 REFUND_FAILED（内层和外层 catch 都设为 REFUND_FAILED）
+    // 标记 REFUND_FAILED
     expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: ORDER_STATUS.REFUND_FAILED }),
@@ -466,7 +480,7 @@ describe('processRefund', () => {
     expect(detail.needsBalanceCompensation).toBe(true);
     expect(detail.rollbackError).toContain('balance api down');
 
-    // 内层也应记录 REFUND_FAILED 审计日志
+    // 应记录 REFUND_FAILED 审计日志
     expect(mockAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: 'REFUND_FAILED' }),
@@ -489,9 +503,16 @@ describe('processRefund', () => {
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await expect(processRefund({ orderId: 'order-001' })).rejects.toThrow('gateway fail');
+    try {
+      await processRefund({ orderId: 'order-001' });
+      expect.unreachable('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(OrderError);
+      expect((e as OrderError).code).toBe('REFUND_FAILED');
+      expect((e as OrderError).message).toContain('gateway fail');
+    }
 
-    // 内层回滚失败后标记 REFUND_FAILED
+    // 标记 REFUND_FAILED
     expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: ORDER_STATUS.REFUND_FAILED }),
@@ -691,38 +712,43 @@ describe('processRefund', () => {
     );
   });
 
-  it('deductBalance=false 时网关退款失败不需要回滚', async () => {
+  it('deductBalance=false 时网关退款失败 → 返回失败结果，不需要回滚', async () => {
     const order = makeOrder();
     mockOrderFindUnique.mockResolvedValue(order);
     mockProviderRefund.mockRejectedValue(new Error('gateway fail'));
 
-    await expect(processRefund({ orderId: 'order-001', deductBalance: false })).rejects.toThrow('gateway fail');
+    const result = await processRefund({ orderId: 'order-001', deductBalance: false });
 
+    expect(result.success).toBe(false);
+    expect(result.warning).toContain('gateway fail');
     // 不应调用 addBalance 回滚
     expect(mockAddBalance).not.toHaveBeenCalled();
     expect(mockSubtractBalance).not.toHaveBeenCalled();
   });
 
-  // ── 网关退款失败 + deductBalance=false → 无需回滚，内层恢复 COMPLETED ──
-  it('网关退款失败 + deductBalance=false → 内层恢复 COMPLETED（无扣减，无需回滚）', async () => {
+  // ── 网关退款失败 + deductBalance=false → 无需回滚，恢复 COMPLETED ──
+  it('网关退款失败 + deductBalance=false → 恢复 COMPLETED（无扣减，无需回滚）', async () => {
     const order = makeOrder();
     mockOrderFindUnique.mockResolvedValue(order);
     mockProviderRefund.mockRejectedValue(new Error('gateway fail'));
 
-    await expect(processRefund({ orderId: 'order-001', deductBalance: false })).rejects.toThrow('gateway fail');
+    const result = await processRefund({ orderId: 'order-001', deductBalance: false });
+
+    expect(result.success).toBe(false);
+    expect(result.warning).toContain('gateway fail');
 
     // 不扣减，不回滚
     expect(mockSubtractBalance).not.toHaveBeenCalled();
     expect(mockAddBalance).not.toHaveBeenCalled();
 
-    // 内层 rollbackFailed=false → 恢复 COMPLETED
+    // 恢复 COMPLETED
     expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: ORDER_STATUS.COMPLETED }),
       }),
     );
 
-    // 内层记录 REFUND_GATEWAY_FAILED
+    // 记录 REFUND_GATEWAY_FAILED
     expect(mockAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: 'REFUND_GATEWAY_FAILED' }),

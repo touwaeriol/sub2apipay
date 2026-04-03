@@ -294,6 +294,14 @@ function AdminContent() {
         setRefundRequireForce(true);
         return;
       }
+      if (data.success === false) {
+        setRefundOrder(null);
+        setRefundWarning(undefined);
+        setRefundRequireForce(false);
+        setError(data.warning || text.refundFailed);
+        await fetchOrders();
+        return;
+      }
       setRefundOrder(null);
       setRefundWarning(undefined);
       setRefundRequireForce(false);
