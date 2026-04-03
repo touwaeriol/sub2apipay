@@ -1116,8 +1116,114 @@ export async function retryRecharge(orderId: string, locale: Locale = 'zh'): Pro
   await executeFulfillment(orderId);
 }
 
+export interface RefundRequestInput {
+  orderId: string;
+  userId: number;
+  amount: number;
+  reason?: string;
+  locale?: Locale;
+}
+
+export async function requestRefund(input: RefundRequestInput): Promise<{ success: boolean }> {
+  const locale = input.locale ?? 'zh';
+  const order = await prisma.order.findUnique({ where: { id: input.orderId } });
+  if (!order) throw new OrderError('NOT_FOUND', message(locale, '订单不存在', 'Order not found'), 404);
+  if (order.userId !== input.userId) {
+    throw new OrderError('FORBIDDEN', message(locale, '无权申请该订单退款', 'Forbidden'), 403);
+  }
+  if (order.orderType !== 'balance') {
+    throw new OrderError(
+      'INVALID_ORDER_TYPE',
+      message(locale, '仅余额充值订单支持退款申请', 'Only balance orders can request refund'),
+      400,
+    );
+  }
+  if (order.status !== ORDER_STATUS.COMPLETED) {
+    throw new OrderError(
+      'INVALID_STATUS',
+      message(locale, '仅已完成订单可申请退款', 'Only completed orders can request refund'),
+      400,
+    );
+  }
+
+  const refundAmount = input.amount;
+  if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+    throw new OrderError(
+      'INVALID_REFUND_AMOUNT',
+      message(locale, '退款金额必须大于 0', 'Refund amount must be greater than 0'),
+      400,
+    );
+  }
+
+  const maxRefundAmount = Number(order.amount);
+  if (refundAmount > maxRefundAmount) {
+    throw new OrderError(
+      'REFUND_AMOUNT_EXCEEDED',
+      message(locale, '退款金额不能超过充值金额', 'Refund amount cannot exceed recharge amount'),
+      400,
+    );
+  }
+
+  const user = await getUser(order.userId);
+  if (user.balance < refundAmount) {
+    throw new OrderError(
+      'BALANCE_NOT_ENOUGH',
+      message(locale, '退款金额不能超过当前余额', 'Refund amount cannot exceed current balance'),
+      400,
+    );
+  }
+
+  const autoRefundEnabled = (await getSystemConfig('AUTO_REFUND_ENABLED')) === 'true';
+  const normalizedReason = input.reason?.trim() || null;
+
+  const updated = await prisma.order.updateMany({
+    where: { id: input.orderId, userId: input.userId, status: ORDER_STATUS.COMPLETED, orderType: 'balance' },
+    data: {
+      status: ORDER_STATUS.REFUND_REQUESTED,
+      refundRequestedAt: new Date(),
+      refundRequestReason: normalizedReason,
+      refundRequestedBy: input.userId,
+      refundAmount: new Prisma.Decimal(refundAmount.toFixed(2)),
+    },
+  });
+
+  if (updated.count === 0) {
+    throw new OrderError(
+      'CONFLICT',
+      message(locale, '订单状态已变更，请刷新后重试', 'Order status changed, refresh and retry'),
+      409,
+    );
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      orderId: input.orderId,
+      action: 'REFUND_REQUESTED',
+      detail: JSON.stringify({
+        amount: refundAmount,
+        reason: normalizedReason,
+        requestedBy: input.userId,
+        autoRefundEnabled,
+      }),
+      operator: `user:${input.userId}`,
+    },
+  });
+
+  if (autoRefundEnabled) {
+    return processRefund({
+      orderId: input.orderId,
+      amount: refundAmount,
+      reason: normalizedReason || undefined,
+      locale,
+    });
+  }
+
+  return { success: true };
+}
+
 export interface RefundInput {
   orderId: string;
+  amount?: number;
   reason?: string;
   force?: boolean;
   deductBalance?: boolean;
@@ -1157,10 +1263,11 @@ async function prepareDeduction(
   deductBalance: boolean,
   force: boolean,
   locale: Locale,
+  overrideAmount?: number,
 ): Promise<DeductionPlan | RefundResult> {
   if (!deductBalance) return { type: 'none', balanceAmount: 0, subscriptionDays: 0, subscriptionId: null };
 
-  const rechargeAmount = Number(order.amount);
+  const rechargeAmount = overrideAmount ?? Number(order.amount);
 
   if (order.orderType === 'subscription') {
     if (!order.subscriptionGroupId || !order.subscriptionDays) {
@@ -1311,25 +1418,56 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
   const deductBalance = input.deductBalance ?? true;
   const order = await prisma.order.findUnique({ where: { id: input.orderId } });
   if (!order) throw new OrderError('NOT_FOUND', message(locale, '订单不存在', 'Order not found'), 404);
-  if (order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.REFUND_FAILED) {
+
+  const allowedStatuses = [ORDER_STATUS.COMPLETED, ORDER_STATUS.REFUND_REQUESTED, ORDER_STATUS.REFUND_FAILED];
+  if (!allowedStatuses.includes(order.status as (typeof allowedStatuses)[number])) {
     throw new OrderError(
       'INVALID_STATUS',
-      message(locale, '仅已完成或退款失败的订单允许退款', 'Only completed or refund-failed orders can be refunded'),
+      message(
+        locale,
+        '仅已完成、已申请退款或退款失败的订单允许退款',
+        'Only completed, refund-requested, or refund-failed orders can be refunded',
+      ),
       400,
     );
   }
 
   const rechargeAmount = Number(order.amount);
-  const refundAmount = Number(order.payAmount ?? order.amount);
+  const maxGatewayRefund = Number(order.payAmount ?? order.amount);
+
+  // 部分退款支持：优先使用传入金额，否则全额
+  const refundAmount = input.amount ?? rechargeAmount;
+  if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+    throw new OrderError(
+      'INVALID_REFUND_AMOUNT',
+      message(locale, '退款金额必须大于 0', 'Refund amount must be greater than 0'),
+      400,
+    );
+  }
+  if (refundAmount > rechargeAmount) {
+    throw new OrderError(
+      'REFUND_AMOUNT_EXCEEDED',
+      message(locale, '退款金额不能超过充值金额', 'Refund amount cannot exceed recharge amount'),
+      400,
+    );
+  }
+
+  // 网关退款金额：部分退款时用 refundAmount，全额时用 payAmount
+  const gatewayRefundAmount = input.amount ?? maxGatewayRefund;
+  const refundReason =
+    input.reason?.trim() || order.refundRequestReason?.trim() || `sub2apipay refund order:${order.id}`;
 
   // 1. 准备扣减计划（可能提前返回 requireForce）
-  const planOrResult = await prepareDeduction(order, deductBalance, input.force ?? false, locale);
+  const planOrResult = await prepareDeduction(order, deductBalance, input.force ?? false, locale, input.amount);
   if (!isDeductionPlan(planOrResult)) return planOrResult;
   const plan = planOrResult;
 
   // 2. CAS 乐观锁
   const lockResult = await prisma.order.updateMany({
-    where: { id: input.orderId, status: { in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.REFUND_FAILED] } },
+    where: {
+      id: input.orderId,
+      status: { in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.REFUND_REQUESTED, ORDER_STATUS.REFUND_FAILED] },
+    },
     data: { status: ORDER_STATUS.REFUNDING },
   });
   if (lockResult.count === 0) {
@@ -1363,21 +1501,23 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
         await provider.refund({
           tradeNo: order.paymentTradeNo,
           orderId: order.id,
-          amount: refundAmount,
-          reason: input.reason,
+          amount: gatewayRefundAmount,
+          reason: refundReason,
         });
       } catch (gatewayError) {
         // 网关退款失败 — 回滚扣减
         const rollbackOk = await rollbackDeduction(input.orderId, order.userId, plan, gatewayError);
 
         if (rollbackOk) {
-          // 回滚成功 — 恢复 COMPLETED，返回失败结果（不 throw）
-          await prisma.order.update({ where: { id: input.orderId }, data: { status: ORDER_STATUS.COMPLETED } });
+          // 回滚成功 — 恢复原状态，返回失败结果（不 throw）
+          const restoreStatus =
+            order.status === ORDER_STATUS.REFUND_REQUESTED ? ORDER_STATUS.REFUND_REQUESTED : ORDER_STATUS.COMPLETED;
+          await prisma.order.update({ where: { id: input.orderId }, data: { status: restoreStatus } });
           await prisma.auditLog.create({
             data: {
               orderId: input.orderId,
               action: 'REFUND_GATEWAY_FAILED',
-              detail: `Gateway refund failed, balance/subscription rolled back: ${errorMessage(gatewayError)}`,
+              detail: `Gateway refund failed, deduction rolled back: ${errorMessage(gatewayError)}`,
               operator: 'admin',
             },
           });
@@ -1385,8 +1525,8 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
             success: false,
             warning: message(
               locale,
-              `支付网关退款失败：${errorMessage(gatewayError)}，已回滚扣减，订单恢复为已完成`,
-              `Gateway refund failed: ${errorMessage(gatewayError)}, deduction rolled back, order restored`,
+              `支付网关退款失败：${errorMessage(gatewayError)}，已回滚扣减`,
+              `Gateway refund failed: ${errorMessage(gatewayError)}, deduction rolled back`,
             ),
           };
         }
@@ -1417,13 +1557,15 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
       });
     }
 
-    // 5. 标记退款成功
+    // 5. 标记退款成功（部分/全额）
+    const finalStatus = refundAmount < rechargeAmount ? ORDER_STATUS.PARTIALLY_REFUNDED : ORDER_STATUS.REFUNDED;
+
     await prisma.order.update({
       where: { id: input.orderId },
       data: {
-        status: ORDER_STATUS.REFUNDED,
+        status: finalStatus,
         refundAmount: new Prisma.Decimal(refundAmount.toFixed(2)),
-        refundReason: input.reason || null,
+        refundReason: refundReason,
         refundAt: new Date(),
         forceRefund: input.force || false,
       },
@@ -1432,11 +1574,12 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
     await prisma.auditLog.create({
       data: {
         orderId: input.orderId,
-        action: 'REFUND_SUCCESS',
+        action: finalStatus === ORDER_STATUS.PARTIALLY_REFUNDED ? 'PARTIAL_REFUND_SUCCESS' : 'REFUND_SUCCESS',
         detail: JSON.stringify({
           rechargeAmount,
           refundAmount,
-          reason: input.reason,
+          gatewayRefundAmount,
+          reason: refundReason,
           force: input.force,
           deductBalance,
           balanceDeducted: plan.balanceAmount,

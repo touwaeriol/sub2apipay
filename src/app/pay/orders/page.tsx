@@ -30,16 +30,8 @@ function OrdersContent() {
 
   const text = {
     missingAuth: pickLocaleText(locale, '缺少认证信息', 'Missing authentication information'),
-    visitOrders: pickLocaleText(
-      locale,
-      '请从 Sub2API 平台正确访问订单页面',
-      'Please open the orders page from Sub2API',
-    ),
-    sessionExpired: pickLocaleText(
-      locale,
-      '登录态已失效，请从 Sub2API 重新进入支付页。',
-      'Session expired. Please re-enter from Sub2API.',
-    ),
+    visitOrders: pickLocaleText(locale, '请从 Sub2API 平台正确访问订单页面', 'Please open the orders page from Sub2API'),
+    sessionExpired: pickLocaleText(locale, '登录态已失效，请从 Sub2API 重新进入支付页。', 'Session expired. Please re-enter from Sub2API.'),
     loadFailed: pickLocaleText(locale, '订单加载失败，请稍后重试。', 'Failed to load orders. Please try again later.'),
     networkError: pickLocaleText(locale, '网络错误，请稍后重试。', 'Network error. Please try again later.'),
     switchingMobileTab: pickLocaleText(locale, '正在切换到移动端订单 Tab...', 'Switching to mobile orders tab...'),
@@ -48,11 +40,8 @@ function OrdersContent() {
     backToPay: pickLocaleText(locale, '返回充值', 'Back to Top Up'),
     loading: pickLocaleText(locale, '加载中...', 'Loading...'),
     userPrefix: pickLocaleText(locale, '用户', 'User'),
-    authError: pickLocaleText(
-      locale,
-      '缺少认证信息，请从 Sub2API 平台正确访问订单页面',
-      'Missing authentication information. Please open the orders page from Sub2API.',
-    ),
+    authError: pickLocaleText(locale, '缺少认证信息，请从 Sub2API 平台正确访问订单页面', 'Missing authentication information. Please open the orders page from Sub2API.'),
+    refundRequestFailed: pickLocaleText(locale, '退款申请失败，请稍后重试。', 'Refund request failed. Please try again later.'),
   };
 
   const [isIframeContext, setIsIframeContext] = useState(true);
@@ -153,20 +142,33 @@ function OrdersContent() {
     loadOrders(1, newSize);
   };
 
+  const handleRefundRequest = async (orderId: string, amount: number, reason: string) => {
+    const params = new URLSearchParams({ token });
+    applyLocaleToSearchParams(params, locale);
+    const res = await fetch(`/api/orders/${orderId}/refund-request?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || text.refundRequestFailed);
+    }
+
+    await loadOrders(page, pageSize);
+  };
+
   const filteredOrders = activeFilter === 'ALL' ? orders : orders.filter((o) => o.status === activeFilter);
 
   const btnClass = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark
-      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
-      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+    isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
   if (isMobile) {
     return (
-      <div
-        className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}
-      >
+      <div className={`flex min-h-screen items-center justify-center p-4 ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
         {text.switchingMobileTab}
       </div>
     );
@@ -217,7 +219,21 @@ function OrdersContent() {
         <OrderFilterBar isDark={isDark} locale={locale} activeFilter={activeFilter} onChange={setActiveFilter} />
       </div>
 
-      <OrderTable isDark={isDark} locale={locale} loading={loading} error={error} orders={filteredOrders} />
+      <OrderTable
+        isDark={isDark}
+        locale={locale}
+        loading={loading}
+        error={error}
+        orders={filteredOrders}
+        userBalance={userInfo?.balance ?? 0}
+        onRefundRequest={async (orderId, amount, reason) => {
+          try {
+            await handleRefundRequest(orderId, amount, reason);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : text.refundRequestFailed);
+          }
+        }}
+      />
 
       <PaginationBar
         page={page}
@@ -242,9 +258,7 @@ function OrdersPageFallback() {
 
   return (
     <div className={`flex min-h-screen items-center justify-center ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-      <div className={isDark ? 'text-slate-400' : 'text-gray-500'}>
-        {pickLocaleText(locale, '加载中...', 'Loading...')}
-      </div>
+      <div className={isDark ? 'text-slate-400' : 'text-gray-500'}>{pickLocaleText(locale, '加载中...', 'Loading...')}</div>
     </div>
   );
 }

@@ -10,7 +10,8 @@ interface RefundDialogProps {
   userBalance?: number;
   subscriptionDays?: number;
   subscriptionRemainingDays?: number;
-  onConfirm: (reason: string, force: boolean, deductBalance: boolean) => Promise<void>;
+  requestedAmount?: number | null;
+  onConfirm: (reason: string, force: boolean, deductBalance: boolean, amount?: number) => Promise<void>;
   onCancel: () => void;
   warning?: string;
   requireForce?: boolean;
@@ -25,6 +26,7 @@ export default function RefundDialog({
   userBalance,
   subscriptionDays,
   subscriptionRemainingDays,
+  requestedAmount,
   onConfirm,
   onCancel,
   warning,
@@ -33,6 +35,7 @@ export default function RefundDialog({
   locale = 'zh',
 }: RefundDialogProps) {
   const [reason, setReason] = useState('');
+  const [refundAmount, setRefundAmount] = useState((requestedAmount ?? amount).toFixed(2));
   const [force, setForce] = useState(false);
   const [deductBalance, setDeductBalance] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -44,7 +47,9 @@ export default function RefundDialog({
       ? {
           title: 'Confirm Refund',
           orderId: 'Order ID',
-          amount: 'Refund Amount',
+          maxAmount: 'Order Amount',
+          refundAmount: 'Refund Amount',
+          refundAmountPlaceholder: 'Enter refund amount',
           reason: 'Refund Reason',
           reasonPlaceholder: 'Enter refund reason (optional)',
           forceRefund: 'Force refund (ignore balance check)',
@@ -59,6 +64,8 @@ export default function RefundDialog({
           insufficientBalance: `Insufficient balance — will deduct to ${currency}0`,
           insufficientDays: 'Insufficient days — will deduct to 0 days',
           noDeduction: 'Will NOT deduct user balance / subscription',
+          amountInvalid: 'Refund amount must be greater than 0',
+          amountExceeded: 'Refund amount cannot exceed order amount',
           cancel: 'Cancel',
           confirm: 'Confirm Refund',
           processing: 'Processing...',
@@ -66,7 +73,9 @@ export default function RefundDialog({
       : {
           title: '确认退款',
           orderId: '订单号',
-          amount: '退款金额',
+          maxAmount: '订单金额',
+          refundAmount: '退款金额',
+          refundAmountPlaceholder: '请输入退款金额',
           reason: '退款原因',
           reasonPlaceholder: '请输入退款原因（可选）',
           forceRefund: '强制退款（忽略余额检查）',
@@ -79,6 +88,8 @@ export default function RefundDialog({
           insufficientBalance: `余额不足，将扣至 ${currency}0`,
           insufficientDays: '剩余天数不足，将扣至 0 天',
           noDeduction: '将不扣除用户余额/订阅期限',
+          amountInvalid: '退款金额必须大于 0',
+          amountExceeded: '退款金额不能超过订单金额',
           cancel: '取消',
           confirm: '确认退款',
           processing: '处理中...',
@@ -92,10 +103,19 @@ export default function RefundDialog({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onCancel]);
 
+  const parsedRefundAmount = Number(refundAmount);
+  const amountError =
+    !Number.isFinite(parsedRefundAmount) || parsedRefundAmount <= 0
+      ? text.amountInvalid
+      : parsedRefundAmount > amount
+        ? text.amountExceeded
+        : '';
+
   const handleConfirm = async () => {
+    if (amountError) return;
     setLoading(true);
     try {
-      await onConfirm(reason, force, deductBalance);
+      await onConfirm(reason, force, deductBalance, parsedRefundAmount);
     } finally {
       setLoading(false);
     }
@@ -120,7 +140,7 @@ export default function RefundDialog({
           </div>
 
           <div className={['rounded-lg p-3', dark ? 'bg-slate-800' : 'bg-gray-50'].join(' ')}>
-            <div className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>{text.amount}</div>
+            <div className={['text-sm', dark ? 'text-slate-400' : 'text-gray-500'].join(' ')}>{text.maxAmount}</div>
             <div className={['text-lg font-bold', dark ? 'text-red-400' : 'text-red-600'].join(' ')}>
               {currency}
               {amount.toFixed(2)}
@@ -220,6 +240,28 @@ export default function RefundDialog({
 
           <div>
             <label className={['mb-1 block text-sm font-medium', dark ? 'text-slate-300' : 'text-gray-700'].join(' ')}>
+              {text.refundAmount}
+            </label>
+            <input
+              type="number"
+              min="0.01"
+              max={amount.toFixed(2)}
+              step="0.01"
+              value={refundAmount}
+              onChange={(e) => setRefundAmount(e.target.value)}
+              placeholder={text.refundAmountPlaceholder}
+              className={[
+                'w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none',
+                dark ? 'border-slate-600 bg-slate-800 text-slate-100' : 'border-gray-300 bg-white text-gray-900',
+              ].join(' ')}
+            />
+            {amountError && (
+              <div className={['mt-1 text-xs', dark ? 'text-red-400' : 'text-red-600'].join(' ')}>{amountError}</div>
+            )}
+          </div>
+
+          <div>
+            <label className={['mb-1 block text-sm font-medium', dark ? 'text-slate-300' : 'text-gray-700'].join(' ')}>
               {text.reason}
             </label>
             <input
@@ -261,7 +303,7 @@ export default function RefundDialog({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading || (requireForce && !force)}
+            disabled={loading || !!amountError || (requireForce && !force)}
             className={[
               'flex-1 rounded-lg py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed',
               dark

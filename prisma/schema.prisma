@@ -28,6 +28,9 @@ model Order {
   refundReason  String?     @map("refund_reason")
   refundAt      DateTime?   @map("refund_at")
   forceRefund   Boolean     @default(false) @map("force_refund")
+  refundRequestedAt DateTime? @map("refund_requested_at")
+  refundRequestReason String? @map("refund_request_reason")
+  refundRequestedBy Int? @map("refund_requested_by")
 
   expiresAt     DateTime    @map("expires_at")
   paidAt        DateTime?   @map("paid_at")
@@ -68,7 +71,9 @@ enum OrderStatus {
   EXPIRED
   CANCELLED
   FAILED
+  REFUND_REQUESTED
   REFUNDING
+  PARTIALLY_REFUNDED
   REFUNDED
   REFUND_FAILED
 }

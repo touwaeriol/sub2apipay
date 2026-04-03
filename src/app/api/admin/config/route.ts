@@ -94,6 +94,7 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'ENABLED_PROVIDERS',
   'SUB2API_ADMIN_API_KEY',
   'OVERRIDE_ENV_ENABLED',
+  'AUTO_REFUND_ENABLED',
 ]);
 
 export async function PUT(request: NextRequest) {

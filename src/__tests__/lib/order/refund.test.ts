@@ -188,7 +188,7 @@ describe('processRefund', () => {
     expect(mockOrderUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          status: { in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.REFUND_FAILED] },
+          status: { in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.REFUND_REQUESTED, ORDER_STATUS.REFUND_FAILED] },
         }),
       }),
     );
@@ -570,7 +570,8 @@ describe('processRefund', () => {
     expect(detail.subscriptionDaysDeducted).toBe(0);
     expect(detail.reason).toBe('测试退款');
     expect(detail.rechargeAmount).toBe(100);
-    expect(detail.refundAmount).toBe(103); // payAmount
+    expect(detail.refundAmount).toBe(100); // rechargeAmount (default, no input.amount)
+    expect(detail.gatewayRefundAmount).toBe(103); // payAmount
   });
 
   it('退款成功时审计日志包含订阅扣减天数', async () => {

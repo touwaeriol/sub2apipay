@@ -69,6 +69,8 @@ function getTexts(locale: Locale) {
         allChannels: 'All Channels',
         sub2apiAdminApiKey: 'Sub2API Admin API Key',
         sub2apiAdminApiKeyHint: 'Leave empty to use environment variable',
+        autoRefund: 'Auto Refund',
+        autoRefundHint: 'When enabled, user refund requests are executed immediately without admin approval',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -130,6 +132,8 @@ function getTexts(locale: Locale) {
         allChannels: '全部渠道',
         sub2apiAdminApiKey: 'Sub2API Admin API Key',
         sub2apiAdminApiKeyHint: '留空则使用环境变量',
+        autoRefund: '自动退款',
+        autoRefundHint: '开启后，用户提交退款申请会立即执行退款，无需管理员审核',
       };
 }
 
@@ -255,6 +259,7 @@ function PaymentConfigContent() {
   const [rcSaving, setRcSaving] = useState(false);
   const [rcLoadBalanceStrategy, setRcLoadBalanceStrategy] = useState('round-robin');
   const [rcSub2apiKey, setRcSub2apiKey] = useState('');
+  const [rcAutoRefundEnabled, setRcAutoRefundEnabled] = useState(false);
 
   // Override env
   const [rcOverrideEnv, setRcOverrideEnv] = useState(false);
@@ -322,6 +327,7 @@ function PaymentConfigContent() {
         if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
         if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
         if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(/\*{4,}/.test(c.value) ? '' : c.value);
+        if (c.key === 'AUTO_REFUND_ENABLED') setRcAutoRefundEnabled(c.value === 'true');
       }
       setRcOverrideEnv(hasOverride);
       setRcOverrideSaved(hasOverride);
@@ -571,6 +577,12 @@ function PaymentConfigContent() {
               label: '余额充值禁用',
             },
             {
+              key: 'AUTO_REFUND_ENABLED',
+              value: rcAutoRefundEnabled ? 'true' : 'false',
+              group: 'payment',
+              label: '自动退款开关',
+            },
+            {
               key: 'CANCEL_RATE_LIMIT_ENABLED',
               value: rcCancelRateLimitEnabled ? 'true' : 'false',
               group: 'payment',
@@ -753,6 +765,19 @@ function PaymentConfigContent() {
               {`${rcPrefix.trim() || 'Sub2API'} 100 ${rcSuffix.trim() || 'CNY'}`.trim()}
             </div>
           </div>
+        </div>
+
+        {/* Toggles row */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Toggle value={rcBalanceEnabled} onChange={() => setRcBalanceEnabled(!rcBalanceEnabled)} />
+            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.enableBalanceRecharge}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Toggle value={rcAutoRefundEnabled} onChange={() => setRcAutoRefundEnabled(!rcAutoRefundEnabled)} />
+            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.autoRefund}</span>
+          </div>
+          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.autoRefundHint}</span>
         </div>
 
         {/* Cancel rate limit */}

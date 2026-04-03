@@ -6,9 +6,13 @@ services:
     env_file: .env
     environment:
       - DATABASE_URL=postgresql://sub2apipay:${DB_PASSWORD:-password}@db:5432/sub2apipay
+      - HOSTNAME=0.0.0.0
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - default
+      - sub2api-network
     restart: unless-stopped
 
   db:
@@ -22,7 +26,14 @@ services:
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U sub2apipay']
       interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
 volumes:
   pgdata:
+
+networks:
+  sub2api-network:
+    external: true
+    name: deploy_default

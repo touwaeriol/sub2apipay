@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getPaymentDisplayInfo, formatCreatedAt } from '@/lib/pay-utils';
+import { getPaymentDisplayInfo, formatCreatedAt, formatStatus } from '@/lib/pay-utils';
 import type { Locale } from '@/lib/locale';
 
 interface AuditLog {
@@ -27,6 +27,9 @@ interface OrderDetailProps {
     refundReason: string | null;
     refundAt: string | null;
     forceRefund: boolean;
+    refundRequestedAt?: string | null;
+    refundRequestReason?: string | null;
+    refundRequestedBy?: number | null;
     expiresAt: string;
     paidAt: string | null;
     completedAt: string | null;
@@ -85,6 +88,9 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
           completedAt: 'Completed At',
           failedAt: 'Failed At',
           failedReason: 'Failure Reason',
+          refundRequestedAt: 'Refund Requested At',
+          refundRequestReason: 'Refund Request Reason',
+          refundRequestedBy: 'Refund Requested By',
           refundAmount: 'Refund Amount',
           refundReason: 'Refund Reason',
           refundAt: 'Refunded At',
@@ -124,6 +130,9 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
           completedAt: '完成时间',
           failedAt: '失败时间',
           failedReason: '失败原因',
+          refundRequestedAt: '申请退款时间',
+          refundRequestReason: '申请退款原因',
+          refundRequestedBy: '申请退款用户',
           refundAmount: '退款金额',
           refundReason: '退款原因',
           refundAt: '退款时间',
@@ -150,7 +159,7 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
     { label: text.userName, value: order.userName || '-' },
     { label: text.email, value: order.userEmail || '-' },
     { label: text.amount, value: `${currency}${order.amount.toFixed(2)}` },
-    { label: text.status, value: order.status },
+    { label: text.status, value: formatStatus(order.status, locale) },
     {
       label: text.orderType,
       value:
@@ -180,18 +189,23 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
     { label: text.failedReason, value: order.failedReason || '-' },
   ];
 
+  if (order.refundRequestedAt || order.refundRequestReason || order.refundRequestedBy != null) {
+    fields.push(
+      { label: text.refundRequestedAt, value: order.refundRequestedAt ? formatCreatedAt(order.refundRequestedAt, locale) : '-' },
+      { label: text.refundRequestReason, value: order.refundRequestReason || '-' },
+      { label: text.refundRequestedBy, value: order.refundRequestedBy != null ? String(order.refundRequestedBy) : '-' },
+    );
+  }
+
   if (order.orderType === 'subscription') {
     fields.push(
       { label: text.planId, value: order.planId || '-' },
-      {
-        label: text.subscriptionGroupId,
-        value: order.subscriptionGroupId != null ? String(order.subscriptionGroupId) : '-',
-      },
+      { label: text.subscriptionGroupId, value: order.subscriptionGroupId != null ? String(order.subscriptionGroupId) : '-' },
       { label: text.subscriptionDays, value: order.subscriptionDays != null ? String(order.subscriptionDays) : '-' },
     );
   }
 
-  if (order.refundAmount) {
+  if (order.refundAmount != null) {
     fields.push(
       { label: text.refundAmount, value: `${currency}${order.refundAmount.toFixed(2)}` },
       { label: text.refundReason, value: order.refundReason || '-' },
@@ -202,15 +216,10 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div
-        className={`max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl p-6 shadow-xl ${dark ? 'bg-slate-800 text-slate-100' : 'bg-white'}`}
-      >
+      <div className={`max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl p-6 shadow-xl ${dark ? 'bg-slate-800 text-slate-100' : 'bg-white'}`}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold">{text.title}</h3>
-          <button
-            onClick={onClose}
-            className={dark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}
-          >
+          <button onClick={onClose} className={dark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}>
             ✕
           </button>
         </div>
@@ -224,43 +233,24 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
           ))}
         </div>
 
-        {/* Audit Logs */}
         <div className="mt-6">
           <h4 className={`mb-3 font-medium ${dark ? 'text-slate-100' : 'text-gray-900'}`}>{text.auditLogs}</h4>
           <div className="space-y-2">
             {order.auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className={`rounded-lg border p-3 ${dark ? 'border-slate-600 bg-slate-700/60' : 'border-gray-100 bg-gray-50'}`}
-              >
+              <div key={log.id} className={`rounded-lg border p-3 ${dark ? 'border-slate-600 bg-slate-700/60' : 'border-gray-100 bg-gray-50'}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{log.action}</span>
-                  <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {formatCreatedAt(log.createdAt, locale)}
-                  </span>
+                  <span className={`text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{formatCreatedAt(log.createdAt, locale)}</span>
                 </div>
-                {log.detail && (
-                  <div className={`mt-1 break-all text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>
-                    {log.detail}
-                  </div>
-                )}
-                {log.operator && (
-                  <div className={`mt-1 text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {text.operator}: {log.operator}
-                  </div>
-                )}
+                {log.detail && <div className={`mt-1 break-all text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{log.detail}</div>}
+                {log.operator && <div className={`mt-1 text-xs ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{text.operator}: {log.operator}</div>}
               </div>
             ))}
-            {order.auditLogs.length === 0 && (
-              <div className={`text-center text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{text.emptyLogs}</div>
-            )}
+            {order.auditLogs.length === 0 && <div className={`text-center text-sm ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{text.emptyLogs}</div>}
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className={`mt-6 w-full rounded-lg border py-2 text-sm ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-        >
+        <button onClick={onClose} className={`mt-6 w-full rounded-lg border py-2 text-sm ${dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
           {text.close}
         </button>
       </div>

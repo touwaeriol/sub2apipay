@@ -28,6 +28,9 @@ interface AdminOrder {
   orderType?: string;
   subscriptionDays?: number | null;
   subscriptionGroupId?: number | null;
+  refundRequestedAt?: string | null;
+  refundRequestReason?: string | null;
+  refundAmount?: number | null;
 }
 
 interface AdminOrderDetail extends AdminOrder {
@@ -37,6 +40,7 @@ interface AdminOrderDetail extends AdminOrder {
   refundReason: string | null;
   refundAt: string | null;
   forceRefund: boolean;
+  refundRequestedBy?: number | null;
   failedAt: string | null;
   updatedAt: string;
   clientIp: string | null;
@@ -76,6 +80,7 @@ function AdminContent() {
           cancelFailed: 'Cancel failed',
           cancelRequestFailed: 'Cancel request failed',
           refundFailed: 'Refund failed',
+          refundRequestFailed: 'Refund request failed',
           loadDetailFailed: 'Failed to load order details',
           title: 'Order Management',
           subtitle: 'View and manage all recharge orders',
@@ -92,11 +97,13 @@ function AdminContent() {
             PAID: 'Paid',
             RECHARGING: 'Recharging',
             COMPLETED: 'Completed',
+            REFUND_REQUESTED: 'Requested',
+            REFUNDING: 'Refunding',
             EXPIRED: 'Expired',
             CANCELLED: 'Cancelled',
             FAILED: 'Recharge failed',
             REFUNDED: 'Refunded',
-            REFUNDING: 'Refunding',
+            PARTIALLY_REFUNDED: 'Partially refunded',
             REFUND_FAILED: 'Refund Failed',
           },
         }
@@ -113,6 +120,7 @@ function AdminContent() {
           cancelFailed: '取消失败',
           cancelRequestFailed: '取消请求失败',
           refundFailed: '退款失败',
+          refundRequestFailed: '退款请求失败',
           loadDetailFailed: '加载订单详情失败',
           title: '订单管理',
           subtitle: '查看和管理所有充值订单',
@@ -129,11 +137,13 @@ function AdminContent() {
             PAID: '已支付',
             RECHARGING: '充值中',
             COMPLETED: '已完成',
+            REFUND_REQUESTED: '申请中',
+            REFUNDING: '退款中',
             EXPIRED: '已超时',
             CANCELLED: '已取消',
             FAILED: '充值失败',
             REFUNDED: '已退款',
-            REFUNDING: '退款中',
+            PARTIALLY_REFUNDED: '已部分退款',
             REFUND_FAILED: '退款失败',
           },
         };
@@ -147,7 +157,6 @@ function AdminContent() {
   const [orderTypeFilter, setOrderTypeFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const [detailOrder, setDetailOrder] = useState<AdminOrderDetail | null>(null);
   const [refundOrder, setRefundOrder] = useState<AdminOrder | null>(null);
   const [refundUserBalance, setRefundUserBalance] = useState<number | undefined>(undefined);
@@ -201,9 +210,7 @@ function AdminContent() {
   const handleRetry = async (orderId: string) => {
     if (!confirm(text.retryConfirm)) return;
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/retry?token=${token}`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/admin/orders/${orderId}/retry?token=${token}`, { method: 'POST' });
       if (res.ok) {
         fetchOrders();
       } else {
@@ -218,9 +225,7 @@ function AdminContent() {
   const handleCancel = async (orderId: string) => {
     if (!confirm(text.cancelConfirm)) return;
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/cancel?token=${token}`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/admin/orders/${orderId}/cancel?token=${token}`, { method: 'POST' });
       if (res.ok) {
         fetchOrders();
       } else {
@@ -234,7 +239,11 @@ function AdminContent() {
 
   const handleRefund = async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
-    if (!order || (order.status !== 'COMPLETED' && order.status !== 'REFUND_FAILED')) return;
+    if (
+      !order ||
+      (order.status !== 'COMPLETED' && order.status !== 'REFUND_REQUESTED' && order.status !== 'REFUND_FAILED')
+    )
+      return;
     setRefundOrder(order);
     setRefundWarning(undefined);
     setRefundRequireForce(false);
@@ -271,7 +280,7 @@ function AdminContent() {
     }
   };
 
-  const handleConfirmRefund = async (reason: string, force: boolean, deductBalance: boolean) => {
+  const handleConfirmRefund = async (reason: string, force: boolean, deductBalance: boolean, amount?: number) => {
     if (!refundOrder) return;
     try {
       const res = await fetch(`/api/admin/refund?token=${token}`, {
@@ -279,6 +288,7 @@ function AdminContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: refundOrder.id,
+          amount,
           reason,
           force,
           deduct_balance: deductBalance,
@@ -306,6 +316,10 @@ function AdminContent() {
       setRefundWarning(undefined);
       setRefundRequireForce(false);
       await fetchOrders();
+      if (detailOrder?.id === refundOrder.id) {
+        const detailRes = await fetch(`/api/admin/orders/${refundOrder.id}?token=${token}`);
+        if (detailRes.ok) setDetailOrder(await detailRes.json());
+      }
     } catch {
       setError(text.refundFailed);
     }
@@ -329,10 +343,12 @@ function AdminContent() {
     'PAID',
     'RECHARGING',
     'COMPLETED',
+    'REFUND_REQUESTED',
+    'REFUNDING',
+    'PARTIALLY_REFUNDED',
     'EXPIRED',
     'CANCELLED',
     'FAILED',
-    'REFUNDING',
     'REFUNDED',
     'REFUND_FAILED',
   ];
@@ -356,11 +372,9 @@ function AdminContent() {
       subtitle={text.subtitle}
       locale={locale}
       actions={
-        <>
-          <button type="button" onClick={fetchOrders} className={btnBase}>
-            {text.refresh}
-          </button>
-        </>
+        <button type="button" onClick={fetchOrders} className={btnBase}>
+          {text.refresh}
+        </button>
       }
     >
       {error && (
@@ -374,7 +388,6 @@ function AdminContent() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">
         {statuses.map((s) => (
           <button
@@ -421,7 +434,6 @@ function AdminContent() {
         ))}
       </div>
 
-      {/* Table */}
       <div
         className={[
           'rounded-xl border',
@@ -465,6 +477,7 @@ function AdminContent() {
         <RefundDialog
           orderId={refundOrder.id}
           amount={refundOrder.payAmount ?? refundOrder.amount}
+          requestedAmount={refundOrder.refundAmount ?? refundOrder.payAmount ?? refundOrder.amount}
           orderType={refundOrder.orderType}
           userBalance={refundUserBalance}
           subscriptionDays={refundOrder.subscriptionDays ?? undefined}

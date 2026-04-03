@@ -217,7 +217,7 @@ export async function subtractBalance(
     headers: await getHeaders(idempotencyKey),
     body: JSON.stringify({
       operation: 'subtract',
-      amount,
+      balance: amount,
       notes,
     }),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
@@ -293,7 +293,7 @@ export async function addBalance(userId: number, amount: number, notes: string, 
     headers: await getHeaders(idempotencyKey),
     body: JSON.stringify({
       operation: 'add',
-      amount,
+      balance: amount,
       notes,
     }),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),

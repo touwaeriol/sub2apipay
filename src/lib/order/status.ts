@@ -31,7 +31,9 @@ export interface OrderDisplayState {
 const CLOSED_STATUSES = new Set<string>([
   ORDER_STATUS.EXPIRED,
   ORDER_STATUS.CANCELLED,
+  ORDER_STATUS.REFUND_REQUESTED,
   ORDER_STATUS.REFUNDING,
+  ORDER_STATUS.PARTIALLY_REFUNDED,
   ORDER_STATUS.REFUNDED,
   ORDER_STATUS.REFUND_FAILED,
 ]);
@@ -78,6 +80,51 @@ export function deriveOrderState(order: OrderStatusLike): DerivedOrderState {
 export function getOrderDisplayState(
   order: Pick<PublicOrderStatusSnapshot, 'status' | 'paymentSuccess' | 'rechargeSuccess' | 'rechargeStatus'>,
 ): OrderDisplayState {
+  if (order.status === ORDER_STATUS.REFUND_REQUESTED) {
+    return {
+      label: '申请中',
+      color: 'text-violet-600',
+      icon: '…',
+      message: '退款申请已提交，等待管理员确认。',
+    };
+  }
+
+  if (order.status === ORDER_STATUS.REFUNDING) {
+    return {
+      label: '退款中',
+      color: 'text-orange-600',
+      icon: '⟳',
+      message: '管理员已确认退款，正在处理退款，请稍候。',
+    };
+  }
+
+  if (order.status === ORDER_STATUS.PARTIALLY_REFUNDED) {
+    return {
+      label: '已部分退款',
+      color: 'text-fuchsia-600',
+      icon: '✓',
+      message: '订单已完成部分退款。',
+    };
+  }
+
+  if (order.status === ORDER_STATUS.REFUNDED) {
+    return {
+      label: '已退款',
+      color: 'text-purple-600',
+      icon: '✓',
+      message: '订单已完成退款。',
+    };
+  }
+
+  if (order.status === ORDER_STATUS.REFUND_FAILED) {
+    return {
+      label: '退款失败',
+      color: 'text-red-600',
+      icon: '✗',
+      message: '退款处理失败，请联系管理员。',
+    };
+  }
+
   if (order.rechargeSuccess || order.rechargeStatus === 'success') {
     return {
       label: '充值成功',
@@ -102,8 +149,7 @@ export function getOrderDisplayState(
         label: '支付成功',
         color: 'text-amber-600',
         icon: '!',
-        message:
-          '支付已完成，但余额充值暂未完成。系统可能会自动重试，请稍后在订单列表查看；如长时间未到账请联系管理员。',
+        message: '支付已完成，但余额充值暂未完成。系统可能会自动重试，请稍后在订单列表查看；如长时间未到账请联系管理员。',
       };
     }
   }

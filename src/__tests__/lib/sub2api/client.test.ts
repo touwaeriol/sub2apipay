@@ -238,7 +238,7 @@ describe('Sub2API Client', () => {
     const fetchCall = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     const body = JSON.parse(fetchCall[1].body as string);
     expect(body.operation).toBe('subtract');
-    expect(body.amount).toBe(50);
+    expect(body.balance).toBe(50);
   });
 
   // ── addBalance ──
@@ -252,7 +252,7 @@ describe('Sub2API Client', () => {
     expect(fetchCall[0]).toContain('/users/1/balance');
     const body = JSON.parse(fetchCall[1].body as string);
     expect(body.operation).toBe('add');
-    expect(body.amount).toBe(100);
+    expect(body.balance).toBe(100);
     const headers = fetchCall[1].headers as Record<string, string>;
     expect(headers['Idempotency-Key']).toBe('idem-add-1');
   });

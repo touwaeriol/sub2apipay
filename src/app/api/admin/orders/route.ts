@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
   if (status && status in OrderStatus) where.status = status as OrderStatus;
   if (orderType && (orderType === 'balance' || orderType === 'subscription')) where.orderType = orderType;
 
-  // userId 校验：忽略无效值（NaN）
   if (userId) {
     const parsedUserId = Number(userId);
     if (Number.isFinite(parsedUserId)) {
@@ -27,7 +26,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 日期校验：忽略无效日期
   if (dateFrom || dateTo) {
     const createdAt: Prisma.DateTimeFilter = {};
     let hasValidDate = false;
@@ -80,6 +78,9 @@ export async function GET(request: NextRequest) {
         subscriptionDays: true,
         refundAmount: true,
         refundAt: true,
+        refundRequestedAt: true,
+        refundRequestReason: true,
+        refundRequestedBy: true,
       },
     }),
     prisma.order.count({ where }),

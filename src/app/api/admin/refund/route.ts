@@ -7,6 +7,7 @@ import { resolveLocale } from '@/lib/locale';
 
 const refundSchema = z.object({
   order_id: z.string().min(1),
+  amount: z.number().positive().optional(),
   reason: z.string().optional(),
   force: z.boolean().optional().default(false),
   deduct_balance: z.boolean().optional().default(true),
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     const result = await processRefund({
       orderId: parsed.data.order_id,
+      amount: parsed.data.amount,
       reason: parsed.data.reason,
       force: parsed.data.force,
       deductBalance: parsed.data.deduct_balance,

@@ -13,9 +13,26 @@ export interface MyOrder {
   status: string;
   paymentType: string;
   createdAt: string;
+  orderType?: string;
+  refundRequestedAt?: string | null;
+  refundRequestReason?: string | null;
+  refundAmount?: number | null;
+  canRefundRequest?: boolean;
 }
 
-export type OrderStatusFilter = 'ALL' | 'PENDING' | 'PAID' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'FAILED';
+export type OrderStatusFilter =
+  | 'ALL'
+  | 'PENDING'
+  | 'PAID'
+  | 'COMPLETED'
+  | 'REFUND_REQUESTED'
+  | 'REFUNDING'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUNDED'
+  | 'REFUND_FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'FAILED';
 
 const STATUS_TEXT_MAP: Record<Locale, Record<string, string>> = {
   zh: {
@@ -23,24 +40,28 @@ const STATUS_TEXT_MAP: Record<Locale, Record<string, string>> = {
     [ORDER_STATUS.PAID]: '已支付',
     [ORDER_STATUS.RECHARGING]: '充值中',
     [ORDER_STATUS.COMPLETED]: '已完成',
+    [ORDER_STATUS.REFUND_REQUESTED]: '申请中',
+    [ORDER_STATUS.REFUNDING]: '退款中',
+    [ORDER_STATUS.PARTIALLY_REFUNDED]: '已部分退款',
+    [ORDER_STATUS.REFUNDED]: '已退款',
+    [ORDER_STATUS.REFUND_FAILED]: '退款失败',
     [ORDER_STATUS.EXPIRED]: '已超时',
     [ORDER_STATUS.CANCELLED]: '已取消',
     [ORDER_STATUS.FAILED]: '失败',
-    [ORDER_STATUS.REFUNDING]: '退款中',
-    [ORDER_STATUS.REFUNDED]: '已退款',
-    [ORDER_STATUS.REFUND_FAILED]: '退款失败',
   },
   en: {
     [ORDER_STATUS.PENDING]: 'Pending',
     [ORDER_STATUS.PAID]: 'Paid',
     [ORDER_STATUS.RECHARGING]: 'Recharging',
     [ORDER_STATUS.COMPLETED]: 'Completed',
+    [ORDER_STATUS.REFUND_REQUESTED]: 'Requested',
+    [ORDER_STATUS.REFUNDING]: 'Refunding',
+    [ORDER_STATUS.PARTIALLY_REFUNDED]: 'Partially refunded',
+    [ORDER_STATUS.REFUNDED]: 'Refunded',
+    [ORDER_STATUS.REFUND_FAILED]: 'Refund failed',
     [ORDER_STATUS.EXPIRED]: 'Expired',
     [ORDER_STATUS.CANCELLED]: 'Cancelled',
     [ORDER_STATUS.FAILED]: 'Failed',
-    [ORDER_STATUS.REFUNDING]: 'Refunding',
-    [ORDER_STATUS.REFUNDED]: 'Refunded',
-    [ORDER_STATUS.REFUND_FAILED]: 'Refund failed',
   },
 };
 
@@ -49,6 +70,11 @@ const FILTER_OPTIONS_MAP: Record<Locale, { key: OrderStatusFilter; label: string
     { key: 'ALL', label: '全部' },
     { key: 'PENDING', label: '待支付' },
     { key: 'COMPLETED', label: '已完成' },
+    { key: 'REFUND_REQUESTED', label: '申请中' },
+    { key: 'REFUNDING', label: '退款中' },
+    { key: 'PARTIALLY_REFUNDED', label: '已部分退款' },
+    { key: 'REFUNDED', label: '已退款' },
+    { key: 'REFUND_FAILED', label: '退款失败' },
     { key: 'CANCELLED', label: '已取消' },
     { key: 'EXPIRED', label: '已超时' },
   ],
@@ -56,6 +82,11 @@ const FILTER_OPTIONS_MAP: Record<Locale, { key: OrderStatusFilter; label: string
     { key: 'ALL', label: 'All' },
     { key: 'PENDING', label: 'Pending' },
     { key: 'COMPLETED', label: 'Completed' },
+    { key: 'REFUND_REQUESTED', label: 'Requested' },
+    { key: 'REFUNDING', label: 'Refunding' },
+    { key: 'PARTIALLY_REFUNDED', label: 'Partially refunded' },
+    { key: 'REFUNDED', label: 'Refunded' },
+    { key: 'REFUND_FAILED', label: 'Refund failed' },
     { key: 'CANCELLED', label: 'Cancelled' },
     { key: 'EXPIRED', label: 'Expired' },
   ],
@@ -261,6 +292,21 @@ export function applySublabelOverrides(overrides: Record<string, string>): void 
 export function getStatusBadgeClass(status: string, isDark: boolean): string {
   if (status === ORDER_STATUS.COMPLETED || status === ORDER_STATUS.PAID) {
     return isDark ? 'bg-emerald-500/20 text-emerald-200' : 'bg-emerald-100 text-emerald-700';
+  }
+  if (status === ORDER_STATUS.REFUND_REQUESTED) {
+    return isDark ? 'bg-violet-500/20 text-violet-200' : 'bg-violet-100 text-violet-700';
+  }
+  if (status === ORDER_STATUS.REFUNDING) {
+    return isDark ? 'bg-orange-500/20 text-orange-200' : 'bg-orange-100 text-orange-700';
+  }
+  if (status === ORDER_STATUS.PARTIALLY_REFUNDED) {
+    return isDark ? 'bg-fuchsia-500/20 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-700';
+  }
+  if (status === ORDER_STATUS.REFUNDED) {
+    return isDark ? 'bg-purple-500/20 text-purple-200' : 'bg-purple-100 text-purple-700';
+  }
+  if (status === ORDER_STATUS.REFUND_FAILED) {
+    return isDark ? 'bg-red-500/20 text-red-200' : 'bg-red-100 text-red-700';
   }
   if (status === ORDER_STATUS.PENDING) {
     return isDark ? 'bg-blue-500/20 text-blue-200' : 'bg-blue-100 text-blue-700';
