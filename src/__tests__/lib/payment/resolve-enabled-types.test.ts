@@ -7,6 +7,7 @@ vi.mock('@/lib/system-config', () => ({
 
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
+  ensureDBProviders: vi.fn().mockResolvedValue(undefined),
   paymentRegistry: { getSupportedTypes: () => [] },
 }));
 

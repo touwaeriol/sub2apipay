@@ -41,6 +41,7 @@ const mockGetProvider = vi.fn().mockReturnValue({ refund: mockProviderRefund });
 
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
+  ensureDBProviders: vi.fn().mockResolvedValue(undefined),
   paymentRegistry: {
     getProvider: (...args: unknown[]) => mockGetProvider(...args),
   },

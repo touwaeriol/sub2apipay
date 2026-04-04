@@ -15,6 +15,7 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
+  ensureDBProviders: vi.fn().mockResolvedValue(undefined),
   paymentRegistry: {
     getDefaultLimit: vi.fn(),
   },

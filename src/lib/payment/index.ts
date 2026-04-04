@@ -5,6 +5,7 @@ import { StripeProvider } from '@/lib/stripe/provider';
 import { AlipayProvider } from '@/lib/alipay/provider';
 import { WxpayProvider } from '@/lib/wxpay/provider';
 import { getEnv } from '@/lib/config';
+import { getSystemConfig } from '@/lib/system-config';
 
 export { paymentRegistry } from './registry';
 export type {
@@ -19,30 +20,35 @@ export type {
 } from './types';
 
 let initialized = false;
+const registeredKeys = new Set<string>();
 
-export function initPaymentProviders(): void {
-  if (initialized) return;
+type Env = ReturnType<typeof getEnv>;
 
-  const env = getEnv();
-  const providers = env.PAYMENT_PROVIDERS;
-
-  if (providers.includes('easypay')) {
+function registerFromList(providers: string[], env: Env, strict: boolean): void {
+  if (providers.includes('easypay') && !registeredKeys.has('easypay')) {
     if (!env.EASY_PAY_PID || !env.EASY_PAY_PKEY) {
-      throw new Error('PAYMENT_PROVIDERS 含 easypay，但缺少 EASY_PAY_PID 或 EASY_PAY_PKEY');
+      if (strict) throw new Error('PAYMENT_PROVIDERS 含 easypay，但缺少 EASY_PAY_PID 或 EASY_PAY_PKEY');
+      console.warn('[payment] easypay enabled in DB but EASY_PAY_PID/EASY_PAY_PKEY not set, skipping');
+    } else {
+      paymentRegistry.register(new EasyPayProvider());
+      registeredKeys.add('easypay');
     }
-    paymentRegistry.register(new EasyPayProvider());
   }
 
-  if (providers.includes('alipay')) {
+  if (providers.includes('alipay') && !registeredKeys.has('alipay')) {
     if (!env.ALIPAY_APP_ID || !env.ALIPAY_PRIVATE_KEY || !env.ALIPAY_NOTIFY_URL) {
-      throw new Error(
-        'PAYMENT_PROVIDERS includes alipay but required env vars are missing: ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_NOTIFY_URL',
-      );
+      if (strict)
+        throw new Error(
+          'PAYMENT_PROVIDERS includes alipay but required env vars are missing: ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_NOTIFY_URL',
+        );
+      console.warn('[payment] alipay enabled in DB but required env vars not set, skipping');
+    } else {
+      paymentRegistry.register(new AlipayProvider());
+      registeredKeys.add('alipay');
     }
-    paymentRegistry.register(new AlipayProvider()); // 注册 alipay_direct
   }
 
-  if (providers.includes('wxpay')) {
+  if (providers.includes('wxpay') && !registeredKeys.has('wxpay')) {
     if (
       !env.WXPAY_APP_ID ||
       !env.WXPAY_MCH_ID ||
@@ -53,22 +59,56 @@ export function initPaymentProviders(): void {
       !env.WXPAY_CERT_SERIAL ||
       !env.WXPAY_NOTIFY_URL
     ) {
-      throw new Error(
-        'PAYMENT_PROVIDERS includes wxpay but required env vars are missing: WXPAY_APP_ID, WXPAY_MCH_ID, WXPAY_PRIVATE_KEY, WXPAY_API_V3_KEY, WXPAY_PUBLIC_KEY, WXPAY_PUBLIC_KEY_ID, WXPAY_CERT_SERIAL, WXPAY_NOTIFY_URL',
-      );
+      if (strict)
+        throw new Error(
+          'PAYMENT_PROVIDERS includes wxpay but required env vars are missing: WXPAY_APP_ID, WXPAY_MCH_ID, WXPAY_PRIVATE_KEY, WXPAY_API_V3_KEY, WXPAY_PUBLIC_KEY, WXPAY_PUBLIC_KEY_ID, WXPAY_CERT_SERIAL, WXPAY_NOTIFY_URL',
+        );
+      console.warn('[payment] wxpay enabled in DB but required env vars not set, skipping');
+    } else {
+      paymentRegistry.register(new WxpayProvider());
+      registeredKeys.add('wxpay');
     }
-    paymentRegistry.register(new WxpayProvider());
   }
 
-  if (providers.includes('stripe')) {
+  if (providers.includes('stripe') && !registeredKeys.has('stripe')) {
     if (!env.STRIPE_SECRET_KEY) {
-      throw new Error('PAYMENT_PROVIDERS 含 stripe，但缺少 STRIPE_SECRET_KEY');
+      if (strict) throw new Error('PAYMENT_PROVIDERS 含 stripe，但缺少 STRIPE_SECRET_KEY');
+      console.warn('[payment] stripe enabled in DB but STRIPE_SECRET_KEY not set, skipping');
+    } else {
+      paymentRegistry.register(new StripeProvider());
+      registeredKeys.add('stripe');
     }
-    paymentRegistry.register(new StripeProvider());
   }
+}
 
+export function initPaymentProviders(): void {
+  if (initialized) return;
+  const env = getEnv();
+  registerFromList(env.PAYMENT_PROVIDERS, env, true);
   initialized = true;
 }
 
-// 注入 lazy init：Registry 方法会自动调用 initPaymentProviders()
+/**
+ * 异步初始化：当数据库覆盖模式开启时，根据 ENABLED_PROVIDERS 补注册 provider。
+ * 在所有使用 paymentRegistry 的异步入口调用。
+ */
+export async function ensureDBProviders(): Promise<void> {
+  initPaymentProviders();
+
+  const overrideEnabled = await getSystemConfig('OVERRIDE_ENV_ENABLED');
+  if (overrideEnabled !== 'true') return;
+
+  const enabledProvidersRaw = await getSystemConfig('ENABLED_PROVIDERS');
+  if (!enabledProvidersRaw) return;
+
+  const dbProviders = enabledProvidersRaw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const env = getEnv();
+  registerFromList(dbProviders, env, false);
+}
+
+// 注入 lazy init：Registry 方法会自动调用 initPaymentProviders()（同步回退）
 paymentRegistry.setInitializer(initPaymentProviders);

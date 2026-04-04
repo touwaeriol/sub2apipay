@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { getEnv } from '@/lib/config';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 
 // 所有支持的服务商及其渠道定义
 const ALL_PROVIDERS = [
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const env = getEnv();
-    initPaymentProviders();
+    await ensureDBProviders();
     const supportedTypes = paymentRegistry.getSupportedTypes();
     const configuredProviders = env.PAYMENT_PROVIDERS;
 

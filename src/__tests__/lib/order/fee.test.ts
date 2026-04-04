@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('@/lib/payment', () => ({
+  initPaymentProviders: vi.fn(),
+  ensureDBProviders: vi.fn().mockResolvedValue(undefined),
+  paymentRegistry: {
+    getProviderKey: vi.fn(),
+  },
+}));
+
 import { calculatePayAmount } from '@/lib/order/fee';
 
 describe('calculatePayAmount', () => {

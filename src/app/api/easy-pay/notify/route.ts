@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import { paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType, PaymentProvider } from '@/lib/payment';
 import { EasyPayProvider } from '@/lib/easy-pay/provider';
 import { getInstanceConfig } from '@/lib/payment/load-balancer';
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       provider = new EasyPayProvider(instId, config);
     } else {
       // 回退到环境变量单实例模式
+      await ensureDBProviders();
       provider = paymentRegistry.getProvider('alipay' as PaymentType);
     }
 

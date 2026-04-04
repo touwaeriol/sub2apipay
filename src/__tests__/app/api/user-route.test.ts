@@ -29,6 +29,7 @@ vi.mock('@/lib/order/limits', () => ({
 
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
+  ensureDBProviders: vi.fn().mockResolvedValue(undefined),
   paymentRegistry: {
     getSupportedTypes: (...args: unknown[]) => mockGetSupportedTypes(...args),
   },

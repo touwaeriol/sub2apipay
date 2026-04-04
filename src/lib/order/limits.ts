@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { ORDER_STATUS } from '@/lib/constants';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import { getMethodFeeRate } from './fee';
 import { getBizDayStartUTC } from '@/lib/time/biz-day';
 import { getSystemConfig } from '@/lib/system-config';
@@ -22,7 +22,7 @@ export async function getMethodDailyLimit(paymentType: string): Promise<number> 
   if (overrideEnabled === 'true') return 0;
 
   // Provider 默认值（未开启在线配置时兜底）
-  initPaymentProviders();
+  await ensureDBProviders();
   const providerDefault = paymentRegistry.getDefaultLimit(paymentType);
   if (providerDefault?.dailyMax !== undefined) return providerDefault.dailyMax;
 
@@ -46,7 +46,7 @@ export async function getMethodSingleLimit(paymentType: string): Promise<number>
   if (overrideEnabled === 'true') return 0;
 
   // Provider 默认值（未开启在线配置时兜底）
-  initPaymentProviders();
+  await ensureDBProviders();
   const providerDefault = paymentRegistry.getDefaultLimit(paymentType);
   if (providerDefault?.singleMax !== undefined) return providerDefault.singleMax;
 

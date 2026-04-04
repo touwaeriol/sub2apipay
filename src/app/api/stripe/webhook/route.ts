@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType } from '@/lib/payment';
 import { handlePaymentNotify } from '@/lib/order/service';
 import { extractHeaders } from '@/lib/utils/api';
@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    await ensureDBProviders();
     const provider = paymentRegistry.getProvider('stripe' as PaymentType);
 
     const rawBody = Buffer.from(await request.arrayBuffer());

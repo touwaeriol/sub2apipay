@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
 import { getEnv } from '@/lib/config';
 import { queryMethodLimits } from '@/lib/order/limits';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 import { resolveLocale } from '@/lib/locale';
 import { getSystemConfig } from '@/lib/system-config';
 import { resolveEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   const locale = resolveLocale(request.nextUrl.searchParams.get('lang'));
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     const env = getEnv();
-    initPaymentProviders();
+    await ensureDBProviders();
     const supportedTypes = paymentRegistry.getSupportedTypes();
 
     // getUser 与 config 查询并行；config 完成后立即启动 queryMethodLimits
@@ -60,7 +61,32 @@ export async function GET(request: NextRequest) {
         maxAmountVal,
         dailyLimitVal,
       ]) => {
-        const enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
+        let enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
+
+        // 覆盖模式下，过滤掉没有活跃实例的支付类型
+        const overrideEnabled = await getSystemConfig('OVERRIDE_ENV_ENABLED');
+        if (overrideEnabled === 'true' && enabledTypes.length > 0) {
+          const providerKeys = [
+            ...new Set(enabledTypes.map((t) => paymentRegistry.getProviderKey(t)).filter(Boolean)),
+          ] as string[];
+          if (providerKeys.length > 0) {
+            const activeInstances = await prisma.paymentProviderInstance.findMany({
+              where: { providerKey: { in: providerKeys }, enabled: true },
+              select: { providerKey: true, supportedTypes: true },
+            });
+            enabledTypes = enabledTypes.filter((type) => {
+              const pk = paymentRegistry.getProviderKey(type);
+              if (!pk) return false;
+              return activeInstances.some((inst) => {
+                if (inst.providerKey !== pk) return false;
+                if (!inst.supportedTypes) return true;
+                const types = inst.supportedTypes.split(',').map((s) => s.trim()).filter(Boolean);
+                return types.length === 0 || types.includes(type);
+              });
+            });
+          }
+        }
+
         const methodLimits = await queryMethodLimits(enabledTypes);
         return {
           enabledTypes,

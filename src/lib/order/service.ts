@@ -4,7 +4,7 @@ import { ORDER_STATUS } from '@/lib/constants';
 import { generateRechargeCode } from './code-gen';
 import { getMethodDailyLimit } from './limits';
 import { getMethodFeeRate, calculatePayAmount } from './fee';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType, PaymentNotification } from '@/lib/payment';
 import {
   getUser,
@@ -366,7 +366,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   });
 
   try {
-    initPaymentProviders();
+    await ensureDBProviders();
     const provider = paymentRegistry.getProvider(input.paymentType);
 
     // 多实例负载均衡：尝试为当前 provider 选择实例
@@ -551,7 +551,7 @@ export async function cancelOrderCore(options: {
         }
       }
       if (!provider) {
-        initPaymentProviders();
+        await ensureDBProviders();
         provider = paymentRegistry.getProvider(paymentType as PaymentType);
       }
       const queryResult = await provider.queryOrder(paymentTradeNo);
@@ -1482,7 +1482,7 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
         }
       }
       if (!provider) {
-        initPaymentProviders();
+        await ensureDBProviders();
         provider = paymentRegistry.getProvider(order.paymentType as PaymentType);
       }
 

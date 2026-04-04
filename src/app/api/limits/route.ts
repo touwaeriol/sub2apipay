@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMethodLimits } from '@/lib/order/limits';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import { getNextBizDayStartUTC } from '@/lib/time/biz-day';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  initPaymentProviders();
+  await ensureDBProviders();
   const types = paymentRegistry.getSupportedTypes();
   const methods = await queryMethodLimits(types);
   const resetAt = getNextBizDayStartUTC();

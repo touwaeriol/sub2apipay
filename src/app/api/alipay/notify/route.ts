@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import { paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType } from '@/lib/payment';
 import { getEnv } from '@/lib/config';
 import { extractHeaders } from '@/lib/utils/api';
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       return new Response('success', { headers: { 'Content-Type': 'text/plain' } });
     }
 
+    await ensureDBProviders();
     const provider = paymentRegistry.getProvider('alipay_direct' as PaymentType);
     const rawBody = await request.text();
     const headers = extractHeaders(request);

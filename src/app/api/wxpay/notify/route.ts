@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { handlePaymentNotify } from '@/lib/order/service';
-import { paymentRegistry } from '@/lib/payment';
+import { ensureDBProviders, paymentRegistry } from '@/lib/payment';
 import type { PaymentType } from '@/lib/payment';
 import { getEnv } from '@/lib/config';
 import { extractHeaders } from '@/lib/utils/api';
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ code: 'SUCCESS', message: '成功' });
     }
 
+    await ensureDBProviders();
     const provider = paymentRegistry.getProvider('wxpay_direct' as PaymentType);
     const rawBody = await request.text();
     const headers = extractHeaders(request);
