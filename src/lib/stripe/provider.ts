@@ -13,21 +13,39 @@ import type {
 } from '@/lib/payment/types';
 
 export class StripeProvider implements PaymentProvider {
-  readonly name = 'stripe';
+  readonly name: string;
   readonly providerKey = 'stripe';
   readonly supportedTypes: PaymentType[] = ['stripe'];
   readonly defaultLimits = {
     stripe: { singleMax: 0, dailyMax: 0 }, // 0 = unlimited
   };
+  readonly instanceId?: string;
+  private instanceConfig?: Record<string, string>;
 
   private client: Stripe | null = null;
 
+  constructor(instanceId?: string, instanceConfig?: Record<string, string>) {
+    this.instanceId = instanceId;
+    this.instanceConfig = instanceConfig;
+    this.name = instanceId ? `stripe:${instanceId}` : 'stripe';
+  }
+
   private getClient(): Stripe {
     if (this.client) return this.client;
-    const env = getEnv();
-    if (!env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not configured');
-    this.client = new Stripe(env.STRIPE_SECRET_KEY);
+    const secretKey = this.instanceConfig?.secretKey || getEnv().STRIPE_SECRET_KEY;
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured');
+    this.client = new Stripe(secretKey);
     return this.client;
+  }
+
+  /** 获取 publishable key（实例配置优先，回退到环境变量） */
+  getPublishableKey(): string | undefined {
+    return this.instanceConfig?.publishableKey || getEnv().STRIPE_PUBLISHABLE_KEY || undefined;
+  }
+
+  /** 获取 webhook secret（实例配置优先，回退到环境变量） */
+  private getWebhookSecret(): string | undefined {
+    return this.instanceConfig?.webhookSecret || getEnv().STRIPE_WEBHOOK_SECRET || undefined;
   }
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResponse> {
@@ -72,14 +90,14 @@ export class StripeProvider implements PaymentProvider {
     headers: Record<string, string>,
   ): Promise<PaymentNotification | null> {
     const stripe = this.getClient();
-    const env = getEnv();
-    if (!env.STRIPE_WEBHOOK_SECRET) throw new Error('STRIPE_WEBHOOK_SECRET not configured');
+    const webhookSecret = this.getWebhookSecret();
+    if (!webhookSecret) throw new Error('STRIPE_WEBHOOK_SECRET not configured');
 
     const sig = headers['stripe-signature'] || '';
     const event = stripe.webhooks.constructEvent(
       typeof rawBody === 'string' ? Buffer.from(rawBody) : rawBody,
       sig,
-      env.STRIPE_WEBHOOK_SECRET,
+      webhookSecret,
     );
 
     if (event.type === 'payment_intent.succeeded') {

@@ -6,6 +6,8 @@ import { AlipayProvider } from '@/lib/alipay/provider';
 import { WxpayProvider } from '@/lib/wxpay/provider';
 import { getEnv } from '@/lib/config';
 import { getSystemConfig } from '@/lib/system-config';
+import { prisma } from '@/lib/db';
+import { decrypt } from '@/lib/crypto';
 
 export { paymentRegistry } from './registry';
 export type {
@@ -90,6 +92,7 @@ export function initPaymentProviders(): void {
 
 /**
  * 异步初始化：当数据库覆盖模式开启时，根据 ENABLED_PROVIDERS 补注册 provider。
+ * 对于有活跃实例且实例配置中包含密钥的 provider，即使没有环境变量也能注册。
  * 在所有使用 paymentRegistry 的异步入口调用。
  */
 export async function ensureDBProviders(): Promise<void> {
@@ -107,7 +110,45 @@ export async function ensureDBProviders(): Promise<void> {
     .filter(Boolean);
 
   const env = getEnv();
+
+  // 先用环境变量注册能注册的
   registerFromList(dbProviders, env, false);
+
+  // 对于环境变量缺失但有活跃实例的 provider，从实例配置注册
+  for (const key of dbProviders) {
+    if (registeredKeys.has(key)) continue;
+
+    const instance = await prisma.paymentProviderInstance.findFirst({
+      where: { providerKey: key, enabled: true },
+      select: { id: true, config: true },
+    });
+    if (!instance) continue;
+
+    let config: Record<string, string>;
+    try {
+      config = JSON.parse(decrypt(instance.config));
+    } catch {
+      console.warn(`[payment] Failed to decrypt config for ${key} instance ${instance.id}, skipping`);
+      continue;
+    }
+
+    switch (key) {
+      case 'stripe':
+        if (config.secretKey) {
+          paymentRegistry.register(new StripeProvider(instance.id, config));
+          registeredKeys.add(key);
+        } else {
+          console.warn(`[payment] stripe instance ${instance.id} has no secretKey, skipping`);
+        }
+        break;
+      case 'easypay':
+        if (config.pid && config.pkey) {
+          paymentRegistry.register(new EasyPayProvider(instance.id, config));
+          registeredKeys.add(key);
+        }
+        break;
+    }
+  }
 }
 
 // 注入 lazy init：Registry 方法会自动调用 initPaymentProviders()（同步回退）

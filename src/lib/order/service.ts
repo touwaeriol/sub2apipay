@@ -381,6 +381,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       if (provider.providerKey === 'easypay') {
         const { EasyPayProvider } = await import('@/lib/easy-pay/provider');
         actualProvider = new EasyPayProvider(instanceResult.instanceId, instanceResult.config);
+      } else if (provider.providerKey === 'stripe') {
+        const { StripeProvider } = await import('@/lib/stripe/provider');
+        actualProvider = new StripeProvider(instanceResult.instanceId, instanceResult.config);
       }
       selectedInstanceId = instanceResult.instanceId;
     } else {

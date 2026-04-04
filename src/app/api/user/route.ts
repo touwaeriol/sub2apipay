@@ -143,8 +143,16 @@ export async function GET(request: NextRequest) {
         methodLimits,
         helpImageUrl: env.PAY_HELP_IMAGE_URL ?? null,
         helpText: env.PAY_HELP_TEXT ?? null,
-        stripePublishableKey:
-          enabledTypes.includes('stripe') && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : null,
+        stripePublishableKey: (() => {
+          if (!enabledTypes.includes('stripe')) return null;
+          // 优先从注册的 StripeProvider 实例读取
+          try {
+            const sp = paymentRegistry.getProvider('stripe' as import('@/lib/payment').PaymentType);
+            const pk = 'getPublishableKey' in sp ? (sp as { getPublishableKey(): string | undefined }).getPublishableKey() : undefined;
+            if (pk) return pk;
+          } catch { /* not registered */ }
+          return env.STRIPE_PUBLISHABLE_KEY || null;
+        })(),
         balanceDisabled,
         maxPendingOrders,
         sublabelOverrides: Object.keys(sublabelOverrides).length > 0 ? sublabelOverrides : null,
