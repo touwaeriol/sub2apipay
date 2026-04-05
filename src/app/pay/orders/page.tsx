@@ -25,13 +25,14 @@ function OrdersContent() {
   const theme = searchParams.get('theme') === 'dark' ? 'dark' : 'light';
   const uiMode = searchParams.get('ui_mode') || 'standalone';
   const srcHost = searchParams.get('src_host') || '';
+  const srcUrl = searchParams.get('src_url') || '';
   const locale = resolveLocale(searchParams.get('lang'));
   const isDark = theme === 'dark';
 
   const text = {
     missingAuth: pickLocaleText(locale, '缺少认证信息', 'Missing authentication information'),
-    visitOrders: pickLocaleText(locale, '请从 Sub2API 平台正确访问订单页面', 'Please open the orders page from Sub2API'),
-    sessionExpired: pickLocaleText(locale, '登录态已失效，请从 Sub2API 重新进入支付页。', 'Session expired. Please re-enter from Sub2API.'),
+    visitOrders: pickLocaleText(locale, '请从 MuskAI 平台正确访问订单页面', 'Please open the orders page from MuskAI'),
+    sessionExpired: pickLocaleText(locale, '登录态已失效，请从 MuskAI 重新进入支付页。', 'Session expired. Please re-enter from MuskAI.'),
     loadFailed: pickLocaleText(locale, '订单加载失败，请稍后重试。', 'Failed to load orders. Please try again later.'),
     networkError: pickLocaleText(locale, '网络错误，请稍后重试。', 'Network error. Please try again later.'),
     switchingMobileTab: pickLocaleText(locale, '正在切换到移动端订单 Tab...', 'Switching to mobile orders tab...'),
@@ -40,7 +41,7 @@ function OrdersContent() {
     backToPay: pickLocaleText(locale, '返回充值', 'Back to Top Up'),
     loading: pickLocaleText(locale, '加载中...', 'Loading...'),
     userPrefix: pickLocaleText(locale, '用户', 'User'),
-    authError: pickLocaleText(locale, '缺少认证信息，请从 Sub2API 平台正确访问订单页面', 'Missing authentication information. Please open the orders page from Sub2API.'),
+    authError: pickLocaleText(locale, '缺少认证信息，请从 MuskAI 平台正确访问订单页面', 'Missing authentication information. Please open the orders page from MuskAI.'),
     refundRequestFailed: pickLocaleText(locale, '退款申请失败，请稍后重试。', 'Refund request failed. Please try again later.'),
   };
 
@@ -190,6 +191,8 @@ function OrdersContent() {
     if (token) params.set('token', token);
     params.set('theme', theme);
     params.set('ui_mode', uiMode);
+    if (srcHost) params.set('src_host', srcHost);
+    if (srcUrl) params.set('src_url', srcUrl);
     applyLocaleToSearchParams(params, locale);
     return `${path}?${params.toString()}`;
   };
@@ -205,11 +208,9 @@ function OrdersContent() {
           <button type="button" onClick={() => loadOrders(page, pageSize)} className={btnClass}>
             {text.refresh}
           </button>
-          {!srcHost && (
-            <a href={buildScopedUrl('/pay')} className={btnClass}>
-              {text.backToPay}
-            </a>
-          )}
+          <a href={buildScopedUrl('/pay')} className={btnClass}>
+            {text.backToPay}
+          </a>
         </>
       }
     >
