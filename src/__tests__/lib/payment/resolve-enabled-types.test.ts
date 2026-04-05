@@ -1,16 +1,43 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockGetSystemConfig = vi.fn();
+const mockFindMany = vi.fn();
+const mockGetSupportedTypes = vi.fn();
+const mockGetProviderKey = vi.fn();
 
 // Mock transitive dependencies to prevent env validation
 vi.mock('@/lib/system-config', () => ({
-  getSystemConfig: vi.fn(),
+  getSystemConfig: (...args: unknown[]) => mockGetSystemConfig(...args),
+}));
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    paymentProviderInstance: {
+      findMany: (...args: unknown[]) => mockFindMany(...args),
+    },
+  },
 }));
 
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
-  paymentRegistry: { getSupportedTypes: () => [] },
+  paymentRegistry: {
+    getSupportedTypes: (...args: unknown[]) => mockGetSupportedTypes(...args),
+    getProviderKey: (...args: unknown[]) => mockGetProviderKey(...args),
+  },
 }));
 
-import { resolveEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
+import {
+  getEnabledPaymentTypes,
+  resolveEnabledPaymentTypes,
+} from '@/lib/payment/resolve-enabled-types';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetSystemConfig.mockResolvedValue(undefined);
+  mockFindMany.mockResolvedValue([]);
+  mockGetSupportedTypes.mockReturnValue([]);
+  mockGetProviderKey.mockReturnValue(undefined);
+});
 
 describe('resolveEnabledPaymentTypes', () => {
   const allTypes = ['alipay', 'wxpay', 'stripe'];
@@ -49,5 +76,42 @@ describe('resolveEnabledPaymentTypes', () => {
 
   it('handles single type', () => {
     expect(resolveEnabledPaymentTypes(allTypes, 'wxpay')).toEqual(['wxpay']);
+  });
+});
+
+describe('getEnabledPaymentTypes', () => {
+  it('filters configured payment types by enabled provider instances', async () => {
+    mockGetSupportedTypes.mockReturnValue(['alipay', 'wxpay', 'stripe']);
+    mockGetProviderKey.mockImplementation((type: string) => {
+      if (type === 'alipay' || type === 'wxpay') return 'easypay';
+      if (type === 'stripe') return 'stripe';
+      return undefined;
+    });
+    mockGetSystemConfig.mockResolvedValue('alipay,wxpay');
+    mockFindMany.mockResolvedValue([{ providerKey: 'easypay', supportedTypes: 'wxpay' }]);
+
+    await expect(getEnabledPaymentTypes()).resolves.toEqual(['wxpay']);
+  });
+
+  it('treats empty instance supportedTypes as wildcard', async () => {
+    mockGetSupportedTypes.mockReturnValue(['alipay', 'wxpay']);
+    mockGetProviderKey.mockReturnValue('easypay');
+    mockGetSystemConfig.mockResolvedValue('alipay,wxpay');
+    mockFindMany.mockResolvedValue([{ providerKey: 'easypay', supportedTypes: '' }]);
+
+    await expect(getEnabledPaymentTypes()).resolves.toEqual(['alipay', 'wxpay']);
+  });
+
+  it('preserves payment types for providers without enabled instances', async () => {
+    mockGetSupportedTypes.mockReturnValue(['alipay', 'wxpay', 'stripe']);
+    mockGetProviderKey.mockImplementation((type: string) => {
+      if (type === 'alipay' || type === 'wxpay') return 'easypay';
+      if (type === 'stripe') return 'stripe';
+      return undefined;
+    });
+    mockGetSystemConfig.mockResolvedValue('stripe');
+    mockFindMany.mockResolvedValue([{ providerKey: 'easypay', supportedTypes: 'wxpay' }]);
+
+    await expect(getEnabledPaymentTypes()).resolves.toEqual(['stripe']);
   });
 });

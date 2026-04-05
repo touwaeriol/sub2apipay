@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserByToken } from '@/lib/sub2api/client';
 import { getEnv } from '@/lib/config';
 import { queryMethodLimits } from '@/lib/order/limits';
-import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
 import { getPaymentDisplayInfo } from '@/lib/pay-utils';
 import { resolveLocale } from '@/lib/locale';
 import { getSystemConfig } from '@/lib/system-config';
-import { resolveEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
+import { getEnabledPaymentTypes } from '@/lib/payment/resolve-enabled-types';
 
 export async function GET(request: NextRequest) {
   const locale = resolveLocale(request.nextUrl.searchParams.get('lang'));
@@ -40,42 +39,26 @@ export async function GET(request: NextRequest) {
     }
 
     const env = getEnv();
-    initPaymentProviders();
-    const supportedTypes = paymentRegistry.getSupportedTypes();
-
-    // getUser 与 config 查询并行；config 完成后立即启动 queryMethodLimits
+    const enabledTypesPromise = getEnabledPaymentTypes();
     const configPromise = Promise.all([
-      getSystemConfig('ENABLED_PAYMENT_TYPES'),
       getSystemConfig('BALANCE_PAYMENT_DISABLED'),
       getSystemConfig('MAX_PENDING_ORDERS'),
       getSystemConfig('RECHARGE_MIN_AMOUNT'),
       getSystemConfig('RECHARGE_MAX_AMOUNT'),
       getSystemConfig('DAILY_RECHARGE_LIMIT'),
     ]).then(
-      async ([
-        configuredPaymentTypesRaw,
-        balanceDisabledVal,
-        maxPendingVal,
-        minAmountVal,
-        maxAmountVal,
-        dailyLimitVal,
-      ]) => {
-        const enabledTypes = resolveEnabledPaymentTypes(supportedTypes, configuredPaymentTypesRaw);
-        const methodLimits = await queryMethodLimits(enabledTypes);
-        return {
-          enabledTypes,
-          methodLimits,
-          balanceDisabled: balanceDisabledVal === 'true',
-          maxPendingOrders: maxPendingVal ? parseInt(maxPendingVal, 10) || 3 : 3,
-          minAmount: minAmountVal ? parseFloat(minAmountVal) || env.MIN_RECHARGE_AMOUNT : env.MIN_RECHARGE_AMOUNT,
-          maxAmount: maxAmountVal ? parseFloat(maxAmountVal) || env.MAX_RECHARGE_AMOUNT : env.MAX_RECHARGE_AMOUNT,
-          maxDailyAmount: dailyLimitVal ? parseFloat(dailyLimitVal) : env.MAX_DAILY_RECHARGE_AMOUNT,
-        };
-      },
+      ([balanceDisabledVal, maxPendingVal, minAmountVal, maxAmountVal, dailyLimitVal]) => ({
+        balanceDisabled: balanceDisabledVal === 'true',
+        maxPendingOrders: maxPendingVal ? parseInt(maxPendingVal, 10) || 3 : 3,
+        minAmount: minAmountVal ? parseFloat(minAmountVal) || env.MIN_RECHARGE_AMOUNT : env.MIN_RECHARGE_AMOUNT,
+        maxAmount: maxAmountVal ? parseFloat(maxAmountVal) || env.MAX_RECHARGE_AMOUNT : env.MAX_RECHARGE_AMOUNT,
+        maxDailyAmount: dailyLimitVal ? parseFloat(dailyLimitVal) : env.MAX_DAILY_RECHARGE_AMOUNT,
+      }),
     );
 
-    const { enabledTypes, methodLimits, balanceDisabled, maxPendingOrders, minAmount, maxAmount, maxDailyAmount } =
-      await configPromise;
+    const [enabledTypes, { balanceDisabled, maxPendingOrders, minAmount, maxAmount, maxDailyAmount }] =
+      await Promise.all([enabledTypesPromise, configPromise]);
+    const methodLimits = await queryMethodLimits(enabledTypes);
 
     // 收集 sublabel 覆盖
     const sublabelOverrides: Record<string, string> = {};

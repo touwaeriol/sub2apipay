@@ -5,7 +5,7 @@ const mockGetCurrentUserByToken = vi.fn();
 const mockGetUser = vi.fn();
 const mockGetSystemConfig = vi.fn();
 const mockQueryMethodLimits = vi.fn();
-const mockGetSupportedTypes = vi.fn();
+const mockGetEnabledPaymentTypes = vi.fn();
 
 vi.mock('@/lib/sub2api/client', () => ({
   getCurrentUserByToken: (...args: unknown[]) => mockGetCurrentUserByToken(...args),
@@ -30,7 +30,7 @@ vi.mock('@/lib/order/limits', () => ({
 vi.mock('@/lib/payment', () => ({
   initPaymentProviders: vi.fn(),
   paymentRegistry: {
-    getSupportedTypes: (...args: unknown[]) => mockGetSupportedTypes(...args),
+    getSupportedTypes: vi.fn(),
   },
 }));
 
@@ -50,16 +50,8 @@ vi.mock('@/lib/system-config', () => ({
 }));
 
 vi.mock('@/lib/payment/resolve-enabled-types', () => ({
-  resolveEnabledPaymentTypes: (supported: string[], configured: string | undefined) => {
-    if (!configured || configured.trim() === '') return supported;
-    const set = new Set(
-      configured
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean),
-    );
-    return supported.filter((t: string) => set.has(t));
-  },
+  getEnabledPaymentTypes: (...args: unknown[]) => mockGetEnabledPaymentTypes(...args),
+  resolveEnabledPaymentTypes: vi.fn(),
 }));
 
 import { GET } from '@/app/api/user/route';
@@ -74,7 +66,7 @@ describe('GET /api/user', () => {
     vi.clearAllMocks();
     mockGetCurrentUserByToken.mockResolvedValue({ id: 1, status: 'active' });
     mockGetUser.mockResolvedValue({ id: 1, status: 'active' });
-    mockGetSupportedTypes.mockReturnValue(['alipay', 'wxpay', 'stripe']);
+    mockGetEnabledPaymentTypes.mockResolvedValue(['alipay', 'wxpay', 'stripe']);
     mockQueryMethodLimits.mockResolvedValue({
       alipay: { maxDailyAmount: 1000 },
       wxpay: { maxDailyAmount: 1000 },
@@ -131,12 +123,8 @@ describe('GET /api/user', () => {
 
   // ── Payment type filtering tests ──
 
-  it('filters enabled payment types by ENABLED_PAYMENT_TYPES config', async () => {
-    mockGetSystemConfig.mockImplementation(async (key: string) => {
-      if (key === 'ENABLED_PAYMENT_TYPES') return 'alipay,wxpay';
-      if (key === 'BALANCE_PAYMENT_DISABLED') return 'false';
-      return undefined;
-    });
+  it('returns enabled payment types from shared payment config resolver', async () => {
+    mockGetEnabledPaymentTypes.mockResolvedValue(['alipay', 'wxpay']);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -146,22 +134,17 @@ describe('GET /api/user', () => {
     expect(mockQueryMethodLimits).toHaveBeenCalledWith(['alipay', 'wxpay']);
   });
 
-  it('falls back to supported payment types when ENABLED_PAYMENT_TYPES is empty', async () => {
-    mockGetSystemConfig.mockImplementation(async (key: string) => {
-      if (key === 'ENABLED_PAYMENT_TYPES') return '   ';
-      if (key === 'BALANCE_PAYMENT_DISABLED') return 'false';
-      return undefined;
-    });
-
+  it('supports instance-constrained enabled payment types', async () => {
+    mockGetEnabledPaymentTypes.mockResolvedValue(['wxpay']);
     const response = await GET(createRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.config.enabledPaymentTypes).toEqual(['alipay', 'wxpay', 'stripe']);
-    expect(mockQueryMethodLimits).toHaveBeenCalledWith(['alipay', 'wxpay', 'stripe']);
+    expect(data.config.enabledPaymentTypes).toEqual(['wxpay']);
+    expect(mockQueryMethodLimits).toHaveBeenCalledWith(['wxpay']);
   });
 
-  it('falls back to supported payment types when ENABLED_PAYMENT_TYPES is undefined', async () => {
+  it('falls back to all enabled payment types when resolver returns the full set', async () => {
     const response = await GET(createRequest());
     const data = await response.json();
 
@@ -204,7 +187,7 @@ describe('GET /api/user', () => {
 
   it('generates sublabel overrides when multiple types share same label', async () => {
     // alipay and alipay_direct both have channel "alipay" in the mock
-    mockGetSupportedTypes.mockReturnValue(['alipay', 'alipay_direct', 'stripe']);
+    mockGetEnabledPaymentTypes.mockResolvedValue(['alipay', 'alipay_direct', 'stripe']);
     mockQueryMethodLimits.mockResolvedValue({});
 
     const response = await GET(createRequest());
@@ -219,7 +202,7 @@ describe('GET /api/user', () => {
 
   it('returns null sublabelOverrides when no conflicts', async () => {
     // Each type has a unique channel label
-    mockGetSupportedTypes.mockReturnValue(['stripe']);
+    mockGetEnabledPaymentTypes.mockResolvedValue(['stripe']);
     mockQueryMethodLimits.mockResolvedValue({});
 
     const response = await GET(createRequest());
