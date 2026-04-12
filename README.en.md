@@ -1,5 +1,13 @@
 # Sub2ApiPay
 
+> **⚠️ This project has been archived.**
+>
+> Payment functionality has been natively integrated into the [Sub2API](https://github.com/Wei-Shaw/sub2api) main project.
+>
+> This repository is no longer maintained and is kept for historical reference only. For payment features, please use Sub2API's built-in payment module.
+
+---
+
 **Language**: [中文](./README.md) | English (current)
 
 Sub2ApiPay is a self-hosted payment gateway built for the [Sub2API](https://sub2api.com) platform. It supports four payment channels — **EasyPay** (aggregated Alipay/WeChat Pay), **Alipay** (official), **WeChat Pay** (official), and **Stripe** — with both pay-as-you-go balance top-up and subscription plans. Once a payment is confirmed, the system automatically calls the Sub2API management API to credit the user's balance or activate the subscription — no manual intervention required.

@@ -1,5 +1,13 @@
 # Sub2ApiPay
 
+> **⚠️ 本项目已归档（Archived）**
+>
+> 支付功能已原生集成到 [Sub2API](https://github.com/Wei-Shaw/sub2api) 主项目中。
+>
+> 本仓库不再维护，仅作为历史参考保留。如需支付功能，请使用 Sub2API 内置的支付模块。
+
+---
+
 **语言 / Language**: 中文（当前）｜ [English](./README.en.md)
 
 Sub2ApiPay 是为 [Sub2API](https://sub2api.com) 平台构建的自托管支付网关。支持 **EasyPay 易支付聚合**、**支付宝官方**、**微信官方**和 **Stripe** 四种支付渠道，提供按量充值与套餐订阅两种计费模式，支付成功后自动调用 Sub2API 管理接口完成到账，无需人工干预。
